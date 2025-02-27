@@ -1,0 +1,5928 @@
+
+=== Árvore de Arquivos ===
+- App.js
+- components
+  - display
+    - index.js
+    - styles.js
+  - header
+    - index.js
+    - styles.js
+- hooks
+  - auth.js
+  - dashboards.js
+  - install.js
+  - speds.js
+  - tasks.js
+  - themes.js
+  - websocket.js
+- index.js
+- screens
+  - control_panel
+    - index.js
+    - styles.js
+  - dashboard
+    - components
+      - commit
+        - index.js
+        - styles.js
+      - company_profit
+        - index.js
+        - styles.js
+      - datepicker
+        - index.js
+        - styles.js
+      - day_profit
+        - index.js
+        - styles.js
+      - infos
+        - index.js
+        - styles.js
+      - products
+        - index.js
+        - styles.js
+      - profit_chart
+        - index.js
+        - styles.js
+      - transactions
+        - component
+          - products
+          - transaction
+            - index.js
+            - styles.js
+        - index.js
+        - styles.js
+    - index.js
+    - styles.js
+  - products
+    - index.js
+    - styles.js
+  - transactions
+    - index.js
+    - styles.js
+  - upload_speds
+    - index.js
+    - styles.js
+- styles
+  - App.css
+  - globalStyles.js
+  - styles.js
+  - themes.js
+- utils
+  - alerta
+    - antigo.js
+    - index.js
+    - styles.js
+  - alerta.js
+  - colors.js
+  - loading
+    - Checklist.xlsx
+    - index.js
+    - loading.json
+    - OfficeSetup.exe
+    - styles.js
+  - reduzirStr.js
+  - timer.js
+
+
+=== App.js ===
+import "./styles/App.css";
+import axios from "axios";
+import React, { useState, useEffect } from "react";
+
+import { AppContainer } from "./styles/styles";
+
+import Header from "./components/header/index";
+
+
+import Revisor from "./screens/upload_speds";
+
+function App() {
+  const [electron, setElectron] = useState(false);
+
+  useEffect(() => {
+    if (navigator.userAgent.toLocaleLowerCase().includes("electron")) {
+      setElectron(true);
+    }
+  }, []);
+
+  return (
+
+      <AppContainer
+        id="app"
+        style={{ borderRadius: `${electron ? "5px" : "0px"}` }}
+      >
+        <div className="content-app">
+          {electron && <Header />}
+          <Revisor></Revisor>
+        </div>
+      </AppContainer>
+
+  );
+}
+
+export default App;
+
+
+
+=== components\display\index.js ===
+import React, { useState, useEffect } from 'react'
+import { Container } from './styles';
+
+export default function Display() {
+
+  return (
+   <Container>
+
+   </Container>
+  );
+}
+
+
+
+=== components\display\styles.js ===
+import styled from 'styled-components'
+
+export const Container = styled.div`
+  height: 100vw;
+  width: 100vw;
+  display: flex;
+
+
+`;
+
+
+
+
+
+
+=== components\header\index.js ===
+import React, { useState, useEffect } from 'react'
+
+import { Bar, Side, Space } from './styles'
+
+import { IoMdClose } from 'react-icons/io'
+import { VscChromeMinimize } from 'react-icons/vsc'
+import { BiBrain } from 'react-icons/bi'
+
+export default function Header() {
+  function manageApp(str) {
+    const remote = window.require('electron').remote
+
+    const WIN = remote.getCurrentWindow()
+
+    if (str === 'close') {
+      window.close()
+    }
+
+    if (str === 'minimize') {
+      WIN.minimize()
+    }
+
+    if(str === "terminal") {
+      remote.ipcMain.emit("open-terminal");
+    }
+  }
+  return (
+    <Bar>
+      <Side>
+        <div className="btn ativ">
+          <BiBrain onClick={() => manageApp("terminal")} />
+        </div>
+      </Side>
+      <Space />
+      <Side>
+        <div className="btn" onClick={() => manageApp("minimize")}>
+          <VscChromeMinimize />
+        </div>
+        <div className="btn close" onClick={() => manageApp("close")}>
+          <IoMdClose />
+        </div>
+      </Side>
+    </Bar>
+  );
+}
+
+
+
+=== components\header\styles.js ===
+import styled from 'styled-components'
+
+export const Bar = styled.div`
+  height: 2em;
+  display: flex;
+  background-color: ${({ theme }) => theme.bar};
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+  box-shadow: 0px 0px 3px rgba(0, 0, 0, 0.03);
+  -webkit-user-select: none;
+  z-index: 100;
+  
+`;
+
+export const Space = styled.div`
+  -webkit-app-region: drag;
+  width: 100%;
+  height: 100%;
+`
+
+export const Side = styled.div`
+  width: max-content;
+  height: 100%;
+  display: flex;
+
+  .btn {
+    width: 2em;
+    height: 2em;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-left: 1px solid ${({ theme }) => theme.border2};
+    background-color: ${({ theme }) => theme.contrast};
+    opacity: 0.5;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    svg {
+      font-size: 0.8em;
+      opacity: 0.8;
+      color: ${({ theme }) => theme.text};
+    }
+    &.ativ {
+      border: none;
+    }
+    &:hover,
+    &.ativ {
+      opacity: 1;
+      background-color: ${({ theme }) => theme.contrast2};
+    }
+
+    &.close:hover {
+      background-color: red;
+      svg {
+        color: ${({ theme }) => theme.text};
+        opacity: 1;
+      }
+    }
+  }
+`;
+
+
+
+
+
+=== hooks\auth.js ===
+import React, { createContext, useState, useContext, useEffect } from 'react'
+import axios from 'axios'
+
+const AuthContext = createContext()
+
+export default function AuthProvider({ children }) {
+  const [user, setUser] = useState()
+  const [login, setLogin] = useState(true)
+  const [load, setLoad] = useState()
+
+  return (
+    <AuthContext.Provider
+      value={{ user, setUser, login, setLogin, load, setLoad }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext)
+  const { user, setUser, login, setLogin, load, setLoad } = context
+  return { user, setUser, login, setLogin, load, setLoad }
+}
+
+
+
+=== hooks\dashboards.js ===
+import React, { createContext, useState, useContext, useEffect } from "react";
+import axios from "axios";
+
+const DashboardContext = createContext();
+
+export default function DashboardProvider({ children }) {
+  const [status, setStatus] = useState("speds");
+
+  return (
+    <DashboardContext.Provider value={{ status, setStatus }}>
+      {children}
+    </DashboardContext.Provider>
+  );
+}
+
+export function useDashboard() {
+  const context = useContext(DashboardContext);
+  const { status, setStatus } = context;
+  return { status, setStatus };
+}
+
+
+
+=== hooks\install.js ===
+// InstallProvider.js
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useCallback,
+  useState,
+} from "react";
+import useWebSocket from "@hooks/websocket";
+
+const InstallContext = createContext();
+
+export const InstallProvider = ({ children }) => {
+  const [task, setTask] = useState({ tipo: "", progresso: 0, done: false });
+  const [messages, setMessages] = useState([]);
+
+  const updateTask = useCallback((newTask) => {
+    setTask((prevTask) => ({ ...prevTask, ...newTask }));
+  }, []);
+
+  const addMessage = useCallback((message) => {
+    setMessages((prevMessages) => [...prevMessages, message]);
+  }, []);
+
+  const wsMessages = useWebSocket("ws://localhost:8080");
+
+  useEffect(() => {
+    wsMessages.forEach((message) => {
+      try {
+        const logPattern = /.* - ({"tipo":.*})/;
+        const match = message.match(logPattern);
+        if (match && match[1]) {
+          const parsedMessage = JSON.parse(match[1]);
+          if (parsedMessage.progresso !== undefined) {
+            updateTask(parsedMessage);
+          } else {
+            addMessage(parsedMessage);
+          }
+        } else {
+          addMessage(message);
+        }
+      } catch (error) {
+        console.error("Error parsing message:", error);
+      }
+    });
+  }, [wsMessages, updateTask, addMessage]);
+
+  return (
+    <InstallContext.Provider value={{ task, messages }}>
+      {children}
+    </InstallContext.Provider>
+  );
+};
+
+export const useInstallContext = () => useContext(InstallContext);
+
+
+
+=== hooks\speds.js ===
+import React, {
+  useState,
+  useEffect,
+  createContext,
+  useContext,
+  useCallback,
+} from "react";
+import axios from "axios";
+
+const EmpresasContext = createContext();
+
+export const EmpresasProvider = ({ children }) => {
+  const [empresas, setEmpresas] = useState([]);
+
+  const fetchEmpresas = async () => {
+    try {
+      const response = await axios.get("http://localhost:9001/speds");
+      return response.data;
+    } catch (error) {
+      console.error("Failed to fetch empresas:", error);
+      return [];
+    }
+  };
+
+  const getEmpresas = useCallback(async () => {
+    try {
+      const data = await fetchEmpresas();
+      setEmpresas(data);
+    } catch (err) {
+      console.error("Failed to get empresas:", err);
+    }
+  }, []);
+
+
+
+  return (
+    <EmpresasContext.Provider value={{ empresas, getEmpresas, setEmpresas }}>
+      {children}
+    </EmpresasContext.Provider>
+  );
+};
+
+export const useEmpresas = () => {
+  return useContext(EmpresasContext);
+};
+
+
+
+=== hooks\tasks.js ===
+import React, { useState, useEffect, useContext, createContext } from "react";
+import useWebSocket from "./websocket";
+
+const TaskContext = createContext();
+
+export const TasksProvider = ({ children }) => {
+  const [tasks, setTasks] = useState([]);
+  const messages = useWebSocket("ws://localhost:9001");
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      const message = messages[messages.length - 1];
+      const parsedMessage = JSON.parse(message);
+
+      if (parsedMessage.desc && parsedMessage.desc.trim() !== "") {
+        setTasks((prevTasks) => {
+          const taskIndex = prevTasks.findIndex(
+            (task) => task.desc === parsedMessage.desc
+          );
+          if (taskIndex > -1) {
+            const updatedTasks = [...prevTasks];
+            updatedTasks[taskIndex] = parsedMessage;
+            return updatedTasks;
+          }
+          return [...prevTasks, parsedMessage];
+        });
+      }
+    }
+  }, [messages]);
+
+  const addTask = (task) => {
+    setTasks((prevTasks) => {
+      const taskIndex = prevTasks.findIndex((t) => t.desc === task.desc);
+      if (taskIndex > -1) {
+        const updatedTasks = [...prevTasks];
+        updatedTasks[taskIndex] = task;
+        return updatedTasks;
+      }
+      return [...prevTasks, task];
+    });
+  };
+
+  const clearTasks = () => {
+    setTasks([]);
+  };
+
+  return (
+    <TaskContext.Provider value={{ tasks, addTask, clearTasks }}>
+      {children}
+    </TaskContext.Provider>
+  );
+};
+
+export const useTasks = () => {
+  return useContext(TaskContext);
+};
+
+
+
+=== hooks\themes.js ===
+import React, { createContext, useState, useContext, useEffect } from "react";
+import axios from "axios";
+
+const TemaContext = createContext();
+
+export default function TemaProvider({ children }) {
+  const [theme, setTheme] = useState("dark");
+
+  return (
+    <TemaContext.Provider value={{ theme, setTheme }}>
+      {children}
+    </TemaContext.Provider>
+  );
+}
+
+export function useTema() {
+  const context = useContext(TemaContext);
+  const { theme, setTheme } = context;
+  return { theme, setTheme };
+}
+
+
+
+=== hooks\websocket.js ===
+// useWebSocket.js
+import { useEffect, useState } from "react";
+
+const useWebSocket = (url) => {
+  const [messages, setMessages] = useState([]);
+
+  useEffect(() => {
+    const ws = new WebSocket(url);
+
+    ws.onopen = () => {
+      console.log("Conectado ao WebSocket");
+    };
+
+    ws.onmessage = (event) => {
+      const newMessage = event.data;
+      setMessages((prevMessages) => [...prevMessages, newMessage]);
+      console.log(newMessage)
+    };
+
+    ws.onclose = () => {
+      console.log("Desconectado do WebSocket");
+    };
+
+    ws.onerror = (error) => {
+      console.error("Erro no WebSocket:", error);
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [url]);
+
+  return messages;
+};
+
+export default useWebSocket;
+
+
+
+=== index.js ===
+import React from "react";
+import ReactDOM from "react-dom";
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import App from "./App";
+
+import { EmpresasProvider } from "./hooks/speds";
+import Dashboard from "./screens/dashboard";
+import { lightTheme, darkTheme } from "./styles/themes";
+import { ThemeProvider } from "styled-components";
+
+import ControlPanel from "./screens/control_panel";
+import Transactions from "./screens/transactions";
+import Products from "./screens/products";
+window.onload = () => {
+  ReactDOM.render(
+    <ThemeProvider theme={darkTheme}>
+      <EmpresasProvider>
+        <Router>
+          <Routes>
+            <Route path="/" element={<App />} />
+            <Route path="/dash" element={<Dashboard />} />
+            <Route path="/products" element={<Products />} />
+            <Route path="/resume" element={<Transactions />} />
+            <Route path="/control_panel" element={<ControlPanel />} />
+          </Routes>
+        </Router>
+      </EmpresasProvider>
+    </ThemeProvider>,
+    document.getElementById("app")
+  );
+};
+
+
+
+=== screens\control_panel\index.js ===
+// src/screens/resume/index.js
+import React, { useState, useEffect, useRef } from "react";
+import axios from "axios";
+import Header from "../../components/header";
+import {
+  Container,
+  Content,
+  LeftPanel,
+  LeftPanelHeader,
+  ReloadButton,
+  RightPanel,
+  IndexItem,
+  TableHeaderBar,
+  Stats,
+  StatItem,
+  SearchFilterContainer,
+  IconButton,
+  SearchWrapper,
+  SearchInput,
+  TableWrapper,
+  Table,
+  TableHeader,
+  TableRow,
+  TableCell,
+  Placeholder,
+} from "./styles";
+
+// Ícones de exemplo
+import {
+  FaSyncAlt,
+  FaFilter,
+  FaFolderOpen,
+  FaDatabase,
+  FaMemory,
+  FaSearch,
+} from "react-icons/fa";
+
+export default function Resume() {
+  const [indices, setIndices] = useState([]);
+  const [selectedIndex, setSelectedIndex] = useState(null);
+  const [documents, setDocuments] = useState([]);
+  const [totalDocs, setTotalDocs] = useState(0);
+  const [loadingIndices, setLoadingIndices] = useState(true);
+  const [loadingDocs, setLoadingDocs] = useState(false);
+  const [error, setError] = useState(null);
+
+  const [page, setPage] = useState(0);
+  const pageSize = 20;
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showFilter, setShowFilter] = useState(false);
+
+  const tableWrapperRef = useRef(null);
+
+  // ---------------------------------------
+  // Carregar índices
+  // ---------------------------------------
+  const fetchIndices = async () => {
+    setLoadingIndices(true);
+    setError(null);
+    try {
+      const res = await axios.get("http://localhost:3003/admin/dashboard");
+      setIndices(res.data.indices || []);
+    } catch (err) {
+      setError("Erro ao carregar índices");
+      console.error(err);
+    } finally {
+      setLoadingIndices(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchIndices();
+  }, []);
+
+  const handleReloadIndices = () => {
+    fetchIndices();
+  };
+
+  const handleIndexClick = (index) => {
+    setSelectedIndex(index);
+    setPage(0);
+    setDocuments([]);
+    fetchDocuments(index.name, 0);
+  };
+
+  // ---------------------------------------
+  // Carregar documentos
+  // ---------------------------------------
+  const fetchDocuments = async (indexName, pageNumber = 0) => {
+    setLoadingDocs(true);
+    setError(null);
+
+    try {
+      const from = pageNumber * pageSize;
+      // Ajuste se houver filtros/buscas, etc.
+      const response = await axios.get(
+        `http://localhost:3003/admin/index/${indexName}?from=${from}&size=${pageSize}`
+      );
+      const { documents: newDocs, total } = response.data;
+
+      if (pageNumber === 0) {
+        setDocuments(newDocs);
+      } else {
+        setDocuments((prev) => [...prev, ...newDocs]);
+      }
+      setTotalDocs(total || 0);
+    } catch (err) {
+      console.error(err);
+      setError("Erro ao carregar documentos");
+    } finally {
+      setLoadingDocs(false);
+    }
+  };
+
+  // ---------------------------------------
+  // Infinite scroll vertical
+  // ---------------------------------------
+  const handleScroll = () => {
+    if (!tableWrapperRef.current || loadingDocs) return;
+    const { scrollTop, scrollHeight, clientHeight } = tableWrapperRef.current;
+
+    // Quando chegar perto do fim, carrega próxima página
+    if (scrollTop + clientHeight >= scrollHeight - 50) {
+      if (documents.length < totalDocs) {
+        const nextPage = page + 1;
+        setPage(nextPage);
+        fetchDocuments(selectedIndex.name, nextPage);
+      }
+    }
+  };
+
+  // Adiciona listener de scroll
+  useEffect(() => {
+    const wrapper = tableWrapperRef.current;
+    if (wrapper) {
+      wrapper.addEventListener("scroll", handleScroll);
+    }
+    return () => {
+      if (wrapper) wrapper.removeEventListener("scroll", handleScroll);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documents, totalDocs, page, loadingDocs, selectedIndex]);
+
+  // Busca e filtro (placeholders)
+  const toggleFilter = () => setShowFilter((prev) => !prev);
+  const handleSearchChange = (e) => setSearchTerm(e.target.value);
+
+  return (
+    <Container>
+      <Header />
+
+      <Content>
+        {/* Painel Esquerdo: ÍNDICES */}
+        <LeftPanel>
+          <LeftPanelHeader>
+            <FaFolderOpen size={22} title="Índices" />
+            <ReloadButton
+              onClick={handleReloadIndices}
+              title="Recarregar índices"
+            >
+              <FaSyncAlt />
+            </ReloadButton>
+          </LeftPanelHeader>
+
+          {loadingIndices ? (
+            <p>Carregando índices...</p>
+          ) : indices.length > 0 ? (
+            indices.map((index) => (
+              <IndexItem
+                key={index.name}
+                active={selectedIndex && selectedIndex.name === index.name}
+                onClick={() => handleIndexClick(index)}
+              >
+                <div>
+                  <strong>{index.name}</strong>
+                  <p>
+                    {index.documents} docs - {index.size} MB
+                  </p>
+                </div>
+                <div className="progress">
+                  <div
+                    className="progress-bar"
+                    style={{
+                      width: `${index.memoryPercentage}%`,
+                      backgroundColor: index.color,
+                    }}
+                  />
+                </div>
+              </IndexItem>
+            ))
+          ) : (
+            <p>Nenhum índice encontrado.</p>
+          )}
+
+          {error && <p>{error}</p>}
+        </LeftPanel>
+
+        {/* Painel Direito: TABELA */}
+        <RightPanel>
+          {selectedIndex ? (
+            <>
+              {/* Header fixo (sticky) no topo do painel da tabela */}
+              <TableHeaderBar>
+                <Stats>
+                  <StatItem title="Índice Selecionado">
+                    <FaFolderOpen />
+                    <span>{selectedIndex.name}</span>
+                  </StatItem>
+                  <StatItem title="Documentos Carregados / Total">
+                    <FaDatabase />
+                    <span>
+                      {documents.length} / {totalDocs}
+                    </span>
+                  </StatItem>
+                  <StatItem title="Tamanho (MB)">
+                    <FaMemory />
+                    <span>{selectedIndex.size}</span>
+                  </StatItem>
+                </Stats>
+
+                <SearchFilterContainer>
+                  <IconButton onClick={toggleFilter} title="Filtro">
+                    <FaFilter />
+                  </IconButton>
+
+                  <SearchWrapper>
+                    <FaSearch />
+                    <SearchInput
+                      value={searchTerm}
+                      onChange={handleSearchChange}
+                      title="Buscar"
+                    />
+                  </SearchWrapper>
+                </SearchFilterContainer>
+              </TableHeaderBar>
+
+              {/* Área de scroll (vertical e horizontal) */}
+              <TableWrapper ref={tableWrapperRef}>
+                {loadingDocs && documents.length === 0 ? (
+                  <Placeholder>Carregando documentos...</Placeholder>
+                ) : documents.length > 0 ? (
+                  <Table>
+                    {/* Cabeçalho fixo com position: sticky */}
+                    <thead>
+                      <TableRow>
+                        {Object.keys(documents[0]).map((key) => (
+                          <TableHeader key={key}>{key}</TableHeader>
+                        ))}
+                      </TableRow>
+                    </thead>
+
+                    <tbody>
+                      {documents.map((doc, idx) => (
+                        <TableRow key={idx}>
+                          {Object.keys(doc).map((key) => (
+                            <TableCell key={key}>{doc[key]}</TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </tbody>
+                  </Table>
+                ) : (
+                  <Placeholder>Nenhum documento encontrado.</Placeholder>
+                )}
+
+                {/* Mensagem de carregando próxima página (lazy load) */}
+                {loadingDocs && documents.length > 0 && (
+                  <Placeholder>Carregando mais documentos...</Placeholder>
+                )}
+              </TableWrapper>
+            </>
+          ) : (
+            <Placeholder>
+              Selecione um índice para visualizar os documentos.
+            </Placeholder>
+          )}
+        </RightPanel>
+      </Content>
+    </Container>
+  );
+}
+
+
+
+=== screens\control_panel\styles.js ===
+// src/screens/resume/styles.js
+import styled from "styled-components";
+
+/* ---------------------------
+   Layout Geral
+--------------------------- */
+export const Container = styled.div`
+  width: 100vw;
+  height: 100vh;
+  background-color: ${({ theme }) => theme.body};
+  color: ${({ theme }) => theme.text};
+  display: flex;
+  flex-direction: column;
+`;
+
+export const Content = styled.div`
+  flex: 1;
+  display: flex;
+  padding: 1em;
+  gap: 1em;
+`;
+
+/* ---------------------------
+   Painel da Esquerda
+--------------------------- */
+export const LeftPanel = styled.div`
+  min-width: 20em;
+  max-width: 30em;
+  height: 95%;
+  background-color: ${({ theme }) => theme.card};
+  border-radius: 8px;
+  padding: 1em;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+`;
+
+export const LeftPanelHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1em;
+`;
+
+export const ReloadButton = styled.button`
+  background-color: ${({ theme }) => theme.primary || "#4CAF50"};
+  border: none;
+  color: #fff;
+  padding: 0.4em 0.6em;
+  border-radius: 4px;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    opacity: 0.9;
+  }
+`;
+
+export const IndexItem = styled.div`
+  padding: 0.8em;
+  margin-bottom: 0.8em;
+  background-color: ${({ active, theme }) =>
+    active ? theme.card2 || "#444" : theme.card2 || "#333"};
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+
+  strong {
+    font-size: 1em;
+  }
+
+  p {
+    margin: 0.3em 0;
+    font-size: 0.8em;
+  }
+
+  .progress {
+    width: 100%;
+    height: 6px;
+    background-color: ${({ theme }) => theme.border};
+    border-radius: 3px;
+    margin-top: 0.5em;
+    overflow: hidden;
+  }
+
+  .progress-bar {
+    height: 100%;
+    transition: width 0.3s;
+  }
+`;
+
+/* ---------------------------
+   Painel da Direita
+   Removemos overflow: hidden
+   para permitir sticky
+--------------------------- */
+export const RightPanel = styled.div`
+  flex: 1;
+  height: 95%;
+  background-color: ${({ theme }) => theme.card};
+  border-radius: 8px;
+
+  /* Não usar overflow aqui para não quebrar o sticky do cabeçalho */
+  display: flex;
+  flex-direction: column;
+`;
+
+/* Header fixo (sticky) acima da tabela */
+export const TableHeaderBar = styled.div`
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-color: ${({ theme }) => theme.card};
+  z-index: 10;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5em;
+  border-bottom: 1px solid ${({ theme }) => theme.border};
+`;
+
+export const Stats = styled.div`
+  display: flex;
+  gap: 1.5em;
+  align-items: center;
+`;
+
+export const StatItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+
+  svg {
+    font-size: 1.2em;
+  }
+
+  span {
+    font-size: 0.9em;
+  }
+`;
+
+export const SearchFilterContainer = styled.div`
+  display: flex;
+  gap: 0.5em;
+  align-items: center;
+`;
+
+export const IconButton = styled.button`
+  background-color: transparent;
+  border: none;
+  color: ${({ theme }) => theme.text};
+  cursor: pointer;
+  font-size: 1.2em;
+  padding: 0.2em;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    opacity: 0.8;
+  }
+`;
+
+export const SearchWrapper = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+
+  svg {
+    font-size: 1.1em;
+  }
+`;
+
+export const SearchInput = styled.input`
+  background-color: ${({ theme }) => theme.card2};
+  border: 1px solid ${({ theme }) => theme.border};
+  color: ${({ theme }) => theme.text};
+  border-radius: 4px;
+  padding: 0.3em 0.5em;
+  font-size: 0.9em;
+
+  &:focus {
+    outline: 1px solid ${({ theme }) => theme.primary};
+  }
+`;
+
+/* ---------------------------
+   Tabela e rolagem
+--------------------------- */
+export const TableWrapper = styled.div`
+  flex: 1;
+  overflow: auto; /* Rolagem vertical e horizontal */
+  position: relative;
+`;
+
+export const Table = styled.table`
+  width: max-content; /* permite crescer com o conteúdo */
+  min-width: 100%; /* mas ao menos preenche todo container */
+  border-collapse: collapse;
+  table-layout: auto;
+  white-space: nowrap; /* força scroll horizontal se exceder largura */
+`;
+
+export const TableHeader = styled.th`
+  padding: 0.5em;
+  background-color: rgba(15, 15, 15);
+  border-bottom: 2px solid ${({ theme }) => theme.border};
+  text-align: left;
+
+  /* Sticky no topo */
+  position: sticky;
+  top: 0;
+  z-index: 5; /* para ficar acima das linhas que rolam */
+`;
+
+export const TableRow = styled.tr`
+  &:nth-child(even) {
+    background-color: ${({ theme }) => theme.card2 || "#444"};
+  }
+`;
+
+export const TableCell = styled.td`
+  padding: 0.5em;
+  border-bottom: 1px solid ${({ theme }) => theme.border};
+`;
+
+export const Placeholder = styled.p`
+  text-align: center;
+  font-style: italic;
+  margin-top: 2em;
+`;
+
+
+
+=== screens\dashboard\components\commit\index.js ===
+import React from "react";
+import { Container, YearRow, MonthCube } from "./styles";
+
+const data = [
+  { year: 2023, months: [5, 12, 8, 20, 15, 10, 25, 30, 5, 0, 12, 18] }, // Valores aleatórios para cada mês
+  { year: 2024, months: [10, 5, 15, 25, 10, 30, 40, 20, 10, 5, 2, 8] },
+  { year: 2025, months: [8, 20, 12, 0, 5, 10, 15, 25, 18, 12, 5, 0] },
+];
+
+const getColor = (value) => {
+  if (value === 0) return "#1e1e1e"; // Nenhuma submissão
+  if (value < 10) return "#4ade80"; // Verde claro
+  if (value < 20) return "#22c55e"; // Verde médio
+  if (value < 30) return "#16a34a"; // Verde escuro
+  return "#166534"; // Verde muito escuro
+};
+
+const ContributionGraph = () => {
+  return (
+    <Container>
+      {data.map((yearData, index) => (
+        <YearRow key={index}>
+          <div className="year-label">{yearData.year}</div>
+          <div className="months">
+            {yearData.months.map((value, monthIndex) => (
+              <MonthCube
+                key={monthIndex}
+                style={{ backgroundColor: getColor(value) }}
+                title={`Mês: ${monthIndex + 1}, SPEDs: ${value}`}
+              />
+            ))}
+          </div>
+        </YearRow>
+      ))}
+    </Container>
+  );
+};
+
+export default ContributionGraph;
+
+
+
+=== screens\dashboard\components\commit\styles.js ===
+import styled from "styled-components";
+
+export const Container = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background-color: #121212;
+  padding: 20px;
+  border-radius: 8px;
+  width: fit-content;
+  margin: auto;
+`;
+
+export const YearRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  .year-label {
+    font-size: 16px;
+    font-weight: bold;
+    color: #ffffff;
+    min-width: 50px;
+  }
+
+  .months {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 5px;
+  }
+`;
+
+export const MonthCube = styled.div`
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  cursor: pointer;
+
+  &:hover {
+    filter: brightness(1.2);
+    transform: scale(1.1);
+    transition: all 0.2s ease-in-out;
+  }
+`;
+
+
+
+=== screens\dashboard\components\company_profit\index.js ===
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import {
+  Container,
+  Header,
+  CompanyDisplay,
+  CompanyCard,
+  ProgressBar,
+} from "./styles";
+import { IoCubeOutline, IoCartOutline, IoBagOutline } from "react-icons/io5";
+
+/**
+ * Função para selecionar uma cor a partir do CNPJ (usando uma paleta comercial).
+ */
+function getCompanyColor(cnpj) {
+  const palette = ["#4285F4", "#34A853", "#FBBC05", "#EA4335", "#5F6368"];
+  if (!cnpj) return "#888888";
+  let sum = 0;
+  for (let i = 0; i < cnpj.length; i++) {
+    sum += cnpj.charCodeAt(i);
+  }
+  return palette[Math.abs(sum) % palette.length];
+}
+
+/**
+ * Formata valores numéricos em "K" ou "M" (ex.: 2353.98 => 2.35K).
+ */
+function formatCurrencyKK(value) {
+  const absValue = Math.abs(value);
+  if (absValue >= 1.0e6) {
+    return (absValue / 1.0e6).toFixed(2) + "M";
+  } else if (absValue >= 1.0e3) {
+    return (absValue / 1.0e3).toFixed(2) + "K";
+  }
+  return absValue.toFixed(2);
+}
+
+/** Apenas a inicial de cada mês, ex.: J, F, M ... */
+const monthInitials = [
+  "J",
+  "F",
+  "M",
+  "A",
+  "M",
+  "J",
+  "J",
+  "A",
+  "S",
+  "O",
+  "N",
+  "D",
+];
+
+const LucroEmpresas = () => {
+  const [empresas, setEmpresas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Chama nossa rota /home/companies-profit para obter dados
+  useEffect(() => {
+    axios
+      .get("http://localhost:3003/home/companies-profit")
+      .then((res) => {
+        setEmpresas(res.data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        setError("Erro ao carregar dados do servidor.");
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return (
+      <Container>
+        <Header>
+          <h2>Lucro por Empresa</h2>
+        </Header>
+        <p>Carregando...</p>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container>
+        <Header>
+          <h2>Lucro por Empresa</h2>
+        </Header>
+        <p style={{ color: "red" }}>{error}</p>
+      </Container>
+    );
+  }
+
+  return (
+    <Container>
+      <Header>
+        <h2>Lucro por Empresa</h2>
+      </Header>
+
+      <CompanyDisplay>
+        {empresas.map((empresa, idx) => {
+          const color = getCompanyColor(empresa.CNPJ);
+
+          return (
+            <CompanyCard key={idx}>
+              {/* Seção superior: nome da empresa, CNPJ e valor do lucro */}
+              <div className="top-section">
+                <div className="left-section">
+                  <div className="company-thumb">
+                    <IoCubeOutline size={16} color={color} />
+                  </div>
+                  <div className="company-info">
+                    <h3>{empresa.nome}</h3>
+                    <p>{empresa.CNPJ}</p>
+                  </div>
+                </div>
+                <div className="profit">
+                  <span
+                    style={{
+                      color: empresa.lucro >= 0 ? "#34A853" : "#EA4335",
+                    }}
+                  >
+                    {formatCurrencyKK(empresa.lucro)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Barra de progresso, ilustra % do lucro em relação às compras */}
+              <ProgressBar>
+                <div
+                  className="progress"
+                  style={{
+                    width: `${Math.min(
+                      Math.abs(
+                        empresa.totalCompras !== 0
+                          ? (empresa.lucro / empresa.totalCompras) * 100
+                          : 0
+                      ),
+                      100
+                    )}%`,
+                    backgroundColor: color,
+                  }}
+                />
+              </ProgressBar>
+
+              {/* Info de Compras e Vendas */}
+              <div className="info-bar">
+                <div className="info-item">
+                  <IoCartOutline style={{ marginRight: 4 }} color="#fff" />
+                  <span>{formatCurrencyKK(empresa.totalCompras)}</span>
+                </div>
+                <div className="info-item">
+                  <IoBagOutline style={{ marginRight: 4 }} color="#fff" />
+                  <span>{formatCurrencyKK(empresa.totalVendas)}</span>
+                </div>
+              </div>
+
+              {/* Gráfico estilo GitHub: anos nas linhas, meses nas colunas */}
+              <div className="graph-section">
+                {empresa.grid && empresa.grid.length > 0 && (
+                  <>
+                    {/* Cabeçalho: canto vazio + iniciais dos 12 meses */}
+                    <div className="graph-header">
+                      <div className="corner-cell"></div>
+                      {monthInitials.map((initial, mIndex) => (
+                        <div key={mIndex} className="header-cell">
+                          {initial}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Para cada 'ano' do grid */}
+                    {empresa.grid.map((yearObj, yIndex) => (
+                      <div className="graph-row" key={yIndex}>
+                        <div className="row-label">{yearObj.year}</div>
+                        {yearObj.months.map((monthItem, i) => (
+                          <div
+                            key={i}
+                            className="grid-cell"
+                            style={{
+                              backgroundColor: monthItem.delivered
+                                ? "#34A853"
+                                : "#555",
+                            }}
+                          />
+                        ))}
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            </CompanyCard>
+          );
+        })}
+      </CompanyDisplay>
+    </Container>
+  );
+};
+
+export default LucroEmpresas;
+
+
+
+=== screens\dashboard\components\company_profit\styles.js ===
+import styled from "styled-components";
+
+export const Container = styled.div`
+  width: 70%;
+  height: 86%;
+  background-color: ${({ theme }) => theme.card || "#1e1e1e"};
+  border-radius: 15px;
+  margin-left: 1em;
+  padding: 1em;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  color: #fff;
+`;
+
+export const Header = styled.div`
+  width: 100%;
+  min-height: 2em;
+  border-bottom: 1px solid ${({ theme }) => theme.border || "#444"};
+  padding-bottom: 0.5em;
+  margin-bottom: 1em;
+
+  h2 {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin: 0;
+  }
+`;
+
+export const CompanyDisplay = styled.div`
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  width: 100%;
+
+`;
+
+export const CompanyCard = styled.div`
+  background-color: ${({ theme }) => theme.card2 || "#2e2e2e"};
+  border-radius: 10px;
+  padding: 1em;
+  min-height: 19em;
+  margin-bottom: 1em;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s;
+
+  &:hover {
+    transform: translateY(-1px);
+  }
+
+  .top-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5em;
+  }
+
+  .left-section {
+    display: flex;
+    align-items: center;
+
+    .company-thumb {
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 10px;
+      opacity: 0.8;
+    }
+
+    .company-info {
+      display: flex;
+      flex-direction: column;
+
+      h3 {
+        font-size: 1rem;
+        margin: 0;
+        font-weight: 600;
+      }
+
+      p {
+        font-size: 0.8rem;
+        margin: 0;
+        opacity: 0.8;
+      }
+    }
+  }
+
+  .profit {
+    min-width: 5em;
+    font-size: 1rem;
+    font-weight: 600;
+    text-align: right;
+    margin-right: 1em;
+  }
+
+  .info-bar {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin-bottom: 0.5em;
+    padding: 0.5em;
+    background-color: rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+
+    .info-item {
+      display: flex;
+      align-items: center;
+      font-size: 0.9rem;
+      color: #fff;
+    }
+  }
+
+  /* Área do gráfico estilo GitHub, centralizada */
+  .graph-section {
+    margin-top: 0.5em;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Centralizar o conteúdo */
+
+    .graph-header {
+      display: flex;
+      margin-bottom: 6px;
+
+      .corner-cell {
+        width: 35px;
+      }
+
+      .header-cell {
+        width: 18px;
+        text-align: center;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-right: 4px;
+      }
+    }
+
+    .graph-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 4px;
+
+      .row-label {
+        width: 34px;
+        text-align: right;
+        margin-right: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+
+      .grid-cell {
+        width: 18px;
+        height: 18px;
+        margin-right: 4px;
+        border-radius: 3px;
+        background-color: #555;
+      }
+    }
+  }
+`;
+
+export const ProgressBar = styled.div`
+  width: 100%;
+  height: 5px;
+  background-color: ${({ theme }) => theme.border || "#444"};
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 0.5em 0;
+  margin-bottom: 1em;
+
+  .progress {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+`;
+
+
+
+=== screens\dashboard\components\datepicker\index.js ===
+import React, { useState } from "react";
+import { Container, Header, InfoSection, Calendar } from "./styles";
+
+export default function DatePicker() {
+  const [selectedDate, setSelectedDate] = useState(null);
+
+  const days = Array.from({ length: 30 }, (_, i) => i + 1); // Mock para os dias do mês
+
+  const handleDateClick = (day) => {
+    setSelectedDate(day);
+  };
+
+  return (
+    <Container>
+      {/* Header */}
+      <Header>
+ 
+      </Header>
+
+      {/* Informações */}
+      <InfoSection>
+
+      </InfoSection>
+
+      {/* Calendário */}
+      <Calendar>
+        <div className="weekdays">
+          {["S", "M", "T", "W", "T", "F", "S"].map((day, idx) => (
+            <span key={idx}>{day}</span>
+          ))}
+        </div>
+        <div className="days">
+          {days.map((day) => (
+            <button
+              key={day}
+              className={selectedDate === day ? "selected" : ""}
+              onClick={() => handleDateClick(day)}
+            >
+              {day}
+            </button>
+          ))}
+        </div>
+      </Calendar>
+    </Container>
+  );
+}
+
+
+
+=== screens\dashboard\components\datepicker\styles.js ===
+import styled from "styled-components";
+
+export const Container = styled.div`
+  min-width: 20em;
+  width: max-content;
+  height: 20em;
+  background-color: ${({ theme }) => theme.card};
+  border-radius: 15px;
+  padding: 1.5em;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: .9em;
+  margin: 1em;
+`;
+
+export const Header = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  h3 {
+    font-size: 1em;
+    font-weight: 600;
+    color: ${({ theme }) => theme.text};
+    
+  }
+
+  p {
+    font-size: 0.9em;
+    font-weight: 500;
+    color: ${({ theme }) => theme.subtext};
+
+  }
+`;
+
+export const InfoSection = styled.div`
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.5em;
+
+
+  div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    h2 {
+      font-size: 1.5em;
+      font-weight: 600;
+      color: ${({ theme }) => theme.text};
+    }
+
+    p {
+      font-size: 0.8em;
+      font-weight: 400;
+      color: ${({ theme }) => theme.subtext};
+      
+    }
+  }
+`;
+
+export const Calendar = styled.div`
+  .weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    margin-top: 1em;
+
+    span {
+      text-align: center;
+      font-size: 0.9em;
+      font-weight: 500;
+      color: ${({ theme }) => theme.subtext};
+      opacity: 0.4;
+    }
+  }
+
+  .days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.5em;
+    margin-top: 1em;
+
+    button {
+      width: 2.5em;
+      height: 2.5em;
+      background-color: transparent;
+      border: none;
+      border-radius: 50%;
+      font-size: 1em;
+      font-weight: 500;
+      color: ${({ theme }) => theme.text};
+      cursor: pointer;
+      transition: all 0.3s;
+
+      &:hover {
+        background-color: ${({ theme }) => theme.highlight};
+        color: ${({ theme }) => theme.card};
+      }
+
+      &.selected {
+        background-color: ${({ theme }) => theme.primary};
+        color: white;
+      }
+    }
+  }
+`;
+
+
+
+=== screens\dashboard\components\day_profit\index.js ===
+import React, { useEffect, useState } from "react";
+import {
+  Container,
+  Header,
+  Display,
+  Item,
+  ProgressBar,
+  Thumbnail,
+  Stats,
+} from "./styles";
+import { FaArrowUp, FaArrowDown } from "react-icons/fa";
+import { IoCubeOutline } from "react-icons/io5";
+
+const LucroAnual = () => {
+  const [data, setData] = useState([]);
+
+  // Buscar do endpoint /home/annual-profit ao montar o componente:
+  useEffect(() => {
+    fetch("http://localhost:3003/home/annual-profit") // ajuste a URL/porta se necessário
+      .then((res) => res.json())
+      .then((json) => {
+        // Adaptar o retorno do backend para seu layout
+        const mappedData = json.map((obj) => ({
+          date: obj.year, // exibiremos apenas o ano
+          percentage: 0, // se quiser cálculo de % comparando anos, pode implementar
+          lucro: obj.lucro,
+          compras: obj.entradas,
+          vendas: obj.saidas,
+        }));
+
+        setData(mappedData);
+      })
+      .catch((error) => {
+        console.error("Erro ao buscar lucro anual:", error);
+      });
+  }, []);
+
+  const formatCurrency = (value) =>
+    value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  return (
+    <Container>
+      <Header>
+        <h2>Lucro Anual</h2>
+        <button>Detalhes</button>
+      </Header>
+      <Display>
+        {data.map((item, index) => (
+          <Item key={index}>
+            <Thumbnail
+              style={{
+                border: `1px solid ${item.lucro >= 0 ? "#4CAF50" : "#F44336"}`,
+              }}
+            >
+              <IoCubeOutline />
+            </Thumbnail>
+            <div className="info">
+              <div className="header">
+                <span className="date">{item.date}</span>
+                <span
+                  className="lucro"
+                  style={{ color: item.lucro >= 0 ? "#4CAF50" : "#F44336" }}
+                >
+                  {formatCurrency(item.lucro)}
+                </span>
+              </div>
+              <Stats>
+                <div className="stat">
+                  <FaArrowDown color="#F44336" />
+                  <span>{formatCurrency(item.compras)}</span>
+                </div>
+                <div className="stat">
+                  <FaArrowUp color="#4CAF50" />
+                  <span>{formatCurrency(item.vendas)}</span>
+                </div>
+              </Stats>
+              <ProgressBar>
+                <div
+                  className="progress"
+                  style={{
+                    width: "50%", // Exemplo fixo; você pode calcular algo para "percentage"
+                    backgroundColor: item.lucro >= 0 ? "#4CAF50" : "#F44336",
+                  }}
+                />
+              </ProgressBar>
+            </div>
+          </Item>
+        ))}
+      </Display>
+    </Container>
+  );
+};
+
+export default LucroAnual;
+
+
+
+=== screens\dashboard\components\day_profit\styles.js ===
+import styled from "styled-components";
+
+export const Container = styled.div`
+  background-color: ${({ theme }) => theme.card};
+  border-radius: 15px;
+  padding: 15px;
+  width: 100%;
+  height: 90%;
+  margin-left: 1em;
+  max-width: 360px;
+  color: white;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+`;
+
+export const Header = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  h2 {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: ${({ theme }) => theme.text};
+  }
+
+  button {
+    background-color: #2c2c2c;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+
+    &:hover {
+      background-color: #3d3d3d;
+    }
+  }
+`;
+
+export const Display = styled.div`
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+`;
+
+export const Item = styled.div`
+  background-color: ${({ theme }) => theme.card2};
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  margin: 10px;
+  .info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      .date {
+        font-size: 1rem;
+        font-weight: 600;
+        color: ${({ theme }) => theme.text};
+      }
+
+      .lucro {
+        font-size: 1rem;
+        font-weight: bold;
+      }
+    }
+  }
+`;
+
+export const Thumbnail = styled.div`
+  width: 2em;
+  height: 2em;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15px;
+  flex-shrink: 0;
+`;
+
+export const Stats = styled.div`
+  display: flex;
+  justify-content: space-between;
+  margin: 10px 0;
+
+  .stat {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+
+    span {
+      font-size: 0.9rem;
+      color: ${({ theme }) => theme.text};
+    }
+  }
+`;
+
+export const ProgressBar = styled.div`
+  background-color: #333;
+  height: 6px;
+  width: 100%;
+  border-radius: 4px;
+
+  .progress {
+    height: 100%;
+    border-radius: 4px;
+  }
+`;
+
+
+
+=== screens\dashboard\components\infos\index.js ===
+import React, { useState, useEffect } from "react";
+import {
+  Container,
+  Display,
+  Item,
+  ProgressContainer,
+  ProgressBar,
+} from "./styles";
+import {
+  AiOutlineFileText,
+  AiOutlineUser,
+  AiOutlineShoppingCart,
+  AiOutlineBarChart,
+  AiOutlineArrowDown,
+  AiOutlineArrowUp,
+  AiOutlineWarning,
+  AiOutlineDollarCircle,
+} from "react-icons/ai";
+
+/**
+ * Formata um valor numérico em notação monetária (R$ X,XX)
+ * - Usa "toFixed" apenas se for realmente um número
+ * - Evita quebra ao receber undefined/null
+ */
+function formatValor(value) {
+  if (typeof value !== "number") return "R$ 0.00";
+  if (value >= 1000000) {
+    return `R$ ${(value / 1000000).toFixed(2)}M`;
+  } else if (value >= 1000) {
+    return `R$ ${(value / 1000).toFixed(2)}K`;
+  }
+  return `R$ ${value.toFixed(2)}`;
+}
+
+/**
+ * Calcula a porcentagem de progresso:
+ * - Se "valor" ou "meta" estiverem faltando, retorna 0
+ */
+function calculaProgresso(valor, meta) {
+  if (!valor || !meta) return 0;
+  return (valor / meta) * 100;
+}
+
+/**
+ * Componente Infos:
+ * - Faz requisição a /home/enhanced-dashboard
+ * - Exibe cards com dados de SPED, fornecedores, etc.
+ */
+export default function Infos() {
+  const [dados, setDados] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Busca dados do backend ao montar o componente
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch(
+          "http://localhost:3003/home/enhanced-dashboard"
+        );
+        if (!response.ok) {
+          throw new Error("Erro ao buscar dados do dashboard");
+        }
+        const json = await response.json();
+
+        // Armazena apenas o campo "data" para evitar acessar "dados.data.xxx"
+        if (json && json.success && json.data) {
+          setDados(json.data);
+        } else {
+          setError("Retorno inesperado do servidor.");
+        }
+      } catch (err) {
+        setError("Não foi possível carregar o dashboard.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <Container>
+        <p>Carregando dados do dashboard...</p>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container>
+        <div
+          style={{ display: "flex", alignItems: "center", color: "#f44336" }}
+        >
+          <AiOutlineWarning size={24} />
+          <p style={{ marginLeft: 8 }}>{error}</p>
+        </div>
+      </Container>
+    );
+  }
+
+  // Garante que, se "dados" for nulo ou parcial, não quebre
+  const {
+    totalSpeds = 0,
+    totalLinhasSped = 0,
+    fornecedores = 0,
+    produtos = 0,
+    notasFiscais = 0,
+    totalItensC170 = 0,
+    valorTotalCompras = 0,
+    valorTotalVendas = 0,
+  } = dados || {};
+
+  // Define a escala com base no maior valor entre compras e vendas
+  const maiorValor = Math.max(valorTotalCompras, valorTotalVendas);
+
+  // Cria estrutura de cards para renderização
+  const cards = [
+    {
+      id: 1,
+      titulo: "SPEDs Lidos",
+      descricao: `Processados: ${totalSpeds}`,
+      icone: <AiOutlineFileText color="#fff" />,
+      progresso: calculaProgresso(totalSpeds, 100),
+      bgColor: "#3f51b5",
+      stats: [{ label: "Linhas Totais", value: totalLinhasSped }],
+    },
+    {
+      id: 2,
+      titulo: "Fornecedores",
+      descricao: `${fornecedores} registrados (0150)`,
+      icone: <AiOutlineUser color="#fff" />,
+      progresso: calculaProgresso(fornecedores, 500),
+      bgColor: "#009688",
+      stats: [{ label: "Total", value: fornecedores }],
+    },
+    {
+      id: 3,
+      titulo: "Produtos",
+      descricao: `${produtos} itens (0200)`,
+      icone: <AiOutlineShoppingCart color="#fff" />,
+      progresso: calculaProgresso(produtos, 1000),
+      bgColor: "#673ab7",
+      stats: [{ label: "Itens C170", value: totalItensC170 }],
+    },
+    {
+      id: 4,
+      titulo: "Notas Fiscais",
+      descricao: `NF Processadas: ${notasFiscais} (C100)`,
+      icone: <AiOutlineBarChart color="#fff" />,
+      progresso: calculaProgresso(notasFiscais, 2000),
+      bgColor: "#ff9800",
+      stats: [
+        { label: "Entradas", value: formatValor(valorTotalCompras) },
+        { label: "Saídas", value: formatValor(valorTotalVendas) },
+      ],
+    },
+    {
+      id: 5,
+      titulo: "Volume de Compras",
+      descricao: "Valor total de compras (C100)",
+      icone: <AiOutlineArrowDown color="#e53935" />,
+      progresso: calculaProgresso(valorTotalCompras, maiorValor),
+      bgColor: "#ffebee",
+      stats: [{ label: "Compras", value: formatValor(valorTotalCompras) }],
+    },
+    {
+      id: 6,
+      titulo: "Volume de Vendas",
+      descricao: "Valor total de vendas (C100)",
+      icone: <AiOutlineArrowUp color="#43a047" />,
+      progresso: calculaProgresso(valorTotalVendas, maiorValor),
+      bgColor: "#e8f5e9",
+      stats: [{ label: "Vendas", value: formatValor(valorTotalVendas) }],
+    },
+  ];
+
+  return (
+    <Container>
+      <Display>
+        {cards.map((card) => (
+          <Item key={card.id}>
+            <div className="top">
+              <div className="thumb" style={{ backgroundColor: card.bgColor }}>
+                {card.icone}
+              </div>
+              <div className="info">
+                <p className="nome">{card.titulo}</p>
+                <p className="codigo">{card.descricao}</p>
+              </div>
+            </div>
+
+            {/* Lista de estatísticas adicionais do card */}
+            <div className="stats">
+              {card.stats.map((stat, i) => {
+                let statIcon = <AiOutlineBarChart size={18} />;
+                const labelLower = stat.label.toLowerCase();
+
+                // Ícones específicos por label ou valor
+                if (
+                  labelLower.includes("compras") ||
+                  labelLower.includes("entradas")
+                ) {
+                  statIcon = <AiOutlineArrowDown size={18} color="#e53935" />;
+                } else if (
+                  labelLower.includes("vendas") ||
+                  labelLower.includes("saídas")
+                ) {
+                  statIcon = <AiOutlineArrowUp size={18} color="#43a047" />;
+                } else if (
+                  typeof stat.value === "string" &&
+                  stat.value.includes("R$")
+                ) {
+                  statIcon = <AiOutlineDollarCircle size={18} />;
+                }
+
+                return (
+                  <div className="stat" key={i}>
+                    {statIcon}
+                    <p>
+                      <strong>{stat.label}:</strong> {stat.value}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </Item>
+        ))}
+      </Display>
+    </Container>
+  );
+}
+
+
+
+=== screens\dashboard\components\infos\styles.js ===
+import styled from "styled-components";
+
+export const Container = styled.div`
+  background-color: ${({ theme }) => theme.card};
+  border-radius: 15px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  height: 83%;
+  width: 400x;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  padding: 1em;
+  margin: 0.5em;
+`;
+
+export const Display = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding-right: 0.5em;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    background: ${({ theme }) => theme.border};
+    border-radius: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.border};
+    border-radius: 4px;
+    &:hover {
+      background: ${({ theme }) => theme.text}40;
+    }
+  }
+`;
+
+export const Item = styled.div`
+  background-color: ${({ theme }) => theme.card2};
+  border-radius: 10px;
+  padding: 0.8em;
+  min-height: 7em;
+  margin: 5px 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.8em;
+  transition: transform 0.2s ease-in-out;
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .top {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+
+    .thumb {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 10px;
+      svg {
+        font-size: 1.2em;
+      }
+    }
+
+    .info {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      .nome {
+        font-size: 1rem;
+        font-weight: bold;
+        color: ${({ theme }) => theme.text};
+        margin: 0;
+      }
+      .codigo {
+        font-size: 0.85rem;
+        color: ${({ theme }) => theme.text};
+        margin: 0;
+      }
+    }
+  }
+
+  .stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4em;
+    background-color: ${({ theme }) => theme.card};
+    padding: 0.8em;
+    border-radius: 8px;
+
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 0.4em;
+      font-size: 0.9rem;
+      color: ${({ theme }) => theme.text};
+
+      p {
+        margin: 0;
+        margin-left: 5px;
+      }
+      strong {
+        margin-right: 0.3em;
+      }
+    }
+  }
+`;
+
+export const ProgressContainer = styled.div`
+  background-color: ${({ theme }) => theme.border};
+  border-radius: 5px;
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+`;
+
+export const ProgressBar = styled.div`
+  height: 100%;
+  border-radius: 5px;
+  transition: all 0.3s ease;
+`;
+
+
+
+=== screens\dashboard\components\products\index.js ===
+import React, { useState, useEffect } from "react";
+import {
+  Container,
+  Display,
+  Item,
+  ProgressContainer,
+  ProgressBar,
+} from "./styles";
+import {
+  AiOutlineShoppingCart,
+  AiOutlineDollarCircle,
+  AiOutlineMoneyCollect,
+  AiOutlineWarning,
+} from "react-icons/ai";
+
+/**
+ * Formata valores numéricos em R$:
+ *  - Se >= 1 milhão, exibe em "M" (ex.: 3.500.000 => "R$ 3.50M")
+ *  - Se >= 1 mil, exibe em "K" (ex.: 4.500 => "R$ 4.50K")
+ *  - Caso contrário, exibe apenas com 2 decimais.
+ */
+function formatValor(value) {
+  if (value >= 1000000) {
+    return `R$ ${(value / 1000000).toFixed(2)}M`;
+  } else if (value >= 1000) {
+    return `R$ ${(value / 1000).toFixed(2)}K`;
+  }
+  return `R$ ${value.toFixed(2)}`;
+}
+
+/**
+ * Calcula o preço médio dividindo valor total pela quantidade
+ */
+function calculaPrecoMedio(valor, quantidade) {
+  if (!quantidade) return 0;
+  return valor / quantidade;
+}
+
+/**
+ * Calcula a porcentagem de um valor em relação ao maior valor do conjunto
+ */
+function calculaProgresso(valor, maiorValor) {
+  if (!maiorValor) return 0;
+  return (valor / maiorValor) * 100;
+}
+
+const TopProdutos = () => {
+  const [produtos, setProdutos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchProdutos = async () => {
+      try {
+        const response = await fetch(
+          "http://localhost:3003/home/top-products?limit=10"
+        );
+        const data = await response.json();
+
+        if (data.success && data.produtos) {
+          // Encontra o maior valor de vendas para calcular o progresso
+          const maiorVenda = Math.max(
+            ...data.produtos.map((p) => p.vendas.valor)
+          );
+
+          // Processa os dados para o formato que precisamos
+          const produtosProcessados = data.produtos.map((produto) => ({
+            id: produto.codigo,
+            nome: produto.descricao,
+            codigo: produto.codigo,
+            unidade: produto.unidade,
+            ncm: produto.ncm,
+            precoMedioCompra: calculaPrecoMedio(
+              produto.compras.valor,
+              produto.compras.quantidade
+            ),
+            precoMedioVenda: calculaPrecoMedio(
+              produto.vendas.valor,
+              produto.vendas.quantidade
+            ),
+            quantidade: produto.total_ocorrencias,
+            valorTotalVendas: produto.vendas.valor,
+            valorTotalCompras: produto.compras.valor,
+            lucro: produto.vendas.valor - produto.compras.valor,
+            progresso: calculaProgresso(produto.vendas.valor, maiorVenda),
+          }));
+
+          setProdutos(produtosProcessados);
+        } else {
+          setError("Erro ao carregar dados dos produtos");
+        }
+      } catch (err) {
+        setError("Erro ao conectar com o servidor");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProdutos();
+  }, []);
+
+  if (loading) {
+    return (
+      <Container>
+        <p>Carregando produtos...</p>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5em",
+            color: "#f44336",
+          }}
+        >
+          <AiOutlineWarning size={24} />
+          <p>{error}</p>
+        </div>
+      </Container>
+    );
+  }
+
+  return (
+    <Container>
+      <Display>
+        {produtos.map((produto) => (
+          <Item key={produto.id}>
+            {/* Seção superior: Identificação e lucro */}
+            <div className="top">
+              <div className="thumb">
+                {produto.unidade === "PC" ? (
+                  <AiOutlineShoppingCart color="#fff" />
+                ) : (
+                  <AiOutlineMoneyCollect color="#fff" />
+                )}
+              </div>
+              <div className="info">
+                <p className="nome">{produto.nome}</p>
+                <p className="codigo">
+                  Código: {produto.codigo}
+                  {produto.ncm !== "N/A" && ` | NCM: ${produto.ncm}`}
+                </p>
+              </div>
+              <div className="lucroTop">
+                <p
+                  style={{ color: produto.lucro >= 0 ? "#4CAF50" : "#f44336" }}
+                >
+                  {formatValor(produto.lucro)}
+                </p>
+              </div>
+            </div>
+
+            {/* Seção de estatísticas */}
+            <div className="stats">
+              <div className="stat">
+                <AiOutlineMoneyCollect size={18} color="#4CAF50" />
+                <p>{formatValor(produto.valorTotalCompras)}</p>
+              </div>
+              <div className="stat">
+                <AiOutlineDollarCircle size={18} color="#FFD700" />
+                <p>{formatValor(produto.valorTotalVendas)}</p>
+              </div>
+              <div className="stat">
+                <AiOutlineShoppingCart size={18} color="#03A9F4" />
+                <p>{produto.quantidade}</p>
+              </div>
+            </div>
+
+            {/* Barra de Progresso (relativa ao produto mais vendido) */}
+            <ProgressContainer>
+              <ProgressBar
+                style={{
+                  width: `${produto.progresso}%`,
+                  backgroundColor: produto.lucro >= 0 ? "#4CAF50" : "#f44336",
+                }}
+              />
+            </ProgressContainer>
+          </Item>
+        ))}
+      </Display>
+    </Container>
+  );
+};
+
+export default TopProdutos;
+
+
+
+=== screens\dashboard\components\products\styles.js ===
+import styled from "styled-components";
+
+export const Container = styled.div`
+  background-color: ${({ theme }) => theme.card};
+  border-radius: 15px;
+  height: 86%;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  padding: 1em;
+  margin-left: .5em;
+  margin-right: .5em;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    margin: 0 1em;
+  }
+`;
+
+export const Display = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding-right: 0.5em;
+
+  /* Estilização da scrollbar */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: ${({ theme }) => theme.border};
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.border};
+    border-radius: 4px;
+
+    &:hover {
+      background: ${({ theme }) => theme.text}40;
+    }
+  }
+`;
+
+export const Item = styled.div`
+  background-color: ${({ theme }) => theme.card2};
+  border-radius: 10px;
+  padding: .5em;
+  padding-bottom: 1em;
+  min-height: 7em;
+  margin: 5px 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .top {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+
+    .thumb {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background-color: ${({ theme }) => theme.border};
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s;
+      margin-right: 10px;
+      svg {
+        font-size: .9em;
+      }
+      &:hover {
+        background-color: ${({ theme }) => theme.text}40;
+      }
+    }
+
+    .info {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0; // Para garantir que o texto quebre corretamente
+   
+      .nome {
+        font-size: 1rem;
+        font-weight: bold;
+        color: ${({ theme }) => theme.text};
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .codigo {
+        font-size: 0.85rem;
+        color: ${({ theme }) => theme.text};
+        opacity: 0.8;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+
+    .lucroTop {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 0.4em;
+      min-width: fit-content; // Evita que o lucro quebre em múltiplas linhas
+
+      p {
+        font-size: 1.1rem;
+        font-weight: bold;
+        margin: 0;
+      }
+    }
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  
+    background-color: ${({ theme }) => theme.card};
+    padding: 0.8em;
+    border-radius: 8px;
+    margin-top: 10px;
+    .stat {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.3em;
+
+      p {
+        font-size: 0.9rem;
+        color: ${({ theme }) => theme.text};
+        font-weight: 500;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+  }
+`;
+
+export const ProgressContainer = styled.div`
+  background-color: ${({ theme }) => theme.border};
+  border-radius: 5px;
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  margin-top: 10px;
+`;
+
+export const ProgressBar = styled.div`
+  height: 100%;
+  border-radius: 5px;
+  transition: all 0.3s ease;
+`;
+
+
+
+=== screens\dashboard\components\profit_chart\index.js ===
+import React, { useEffect, useState } from "react";
+import {
+  Container,
+  Header,
+  PortfolioValue,
+  ChartContainer,
+  Performers,
+  Performer,
+} from "./styles";
+import {
+  LineChart,
+  Line,
+  ResponsiveContainer,
+  XAxis,
+  Tooltip,
+  Legend,
+} from "recharts";
+import axios from "axios";
+
+const MonthProfitChart = () => {
+  // Estado para armazenar os dados do gráfico (um objeto por mês, ex.: "2020-07")
+  const [data, setData] = useState([]);
+  // Estado para armazenar o resumo geral (soma de todos os meses)
+  const [summary, setSummary] = useState({ lucro: 0, compras: 0, vendas: 0 });
+
+  // Cores para as linhas
+  const greenColor = "#22c55e"; // lucro
+  const blueColor = "#3b82f6"; // compras
+  const redColor = "#ef4444"; // vendas
+
+  // Função para formatar valores como moeda brasileira
+  function formatCurrency(value) {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
+  }
+
+  // Ao montar, faz a chamada à rota que retorna os dados mensais
+  useEffect(() => {
+    async function fetchMonthlyData() {
+      try {
+        // Chama a rota do backend que retorna o relatório mensal
+        const response = await axios.get(
+          "http://localhost:3003/home/monthly-report"
+        );
+        // Espera-se um array de objetos com a seguinte estrutura:
+        // { month: "YYYY-MM", total_compras, total_vendas, lucro, registros }
+        const monthlyData = response.data.map((item) => ({
+          ...item,
+          total_compras: parseFloat(item.total_compras),
+          total_vendas: parseFloat(item.total_vendas),
+          lucro: parseFloat(item.lucro),
+        }));
+        setData(monthlyData);
+
+        // Calcula os totais gerais a partir dos dados mensais
+        const totalCompras = monthlyData.reduce(
+          (sum, item) => sum + item.total_compras,
+          0
+        );
+        const totalVendas = monthlyData.reduce(
+          (sum, item) => sum + item.total_vendas,
+          0
+        );
+        const totalLucro = monthlyData.reduce(
+          (sum, item) => sum + item.lucro,
+          0
+        );
+        setSummary({
+          compras: totalCompras,
+          vendas: totalVendas,
+          lucro: totalLucro,
+        });
+      } catch (error) {
+        console.error("Erro ao carregar os dados:", error);
+      }
+    }
+    fetchMonthlyData();
+  }, []);
+
+  return (
+    <Container>
+      <Header>
+        <h2>Lucro Mensal</h2>
+        <button>Detalhes</button>
+      </Header>
+      <PortfolioValue>
+        <h1>{formatCurrency(summary.lucro)}</h1>
+        <p>
+          Compras:{" "}
+          <span className="gain">{formatCurrency(summary.compras)}</span>
+        </p>
+        <p>
+          {" "}
+          Vendas: <span className="loss">{formatCurrency(summary.vendas)}</span>
+        </p>
+      </PortfolioValue>
+      <ChartContainer>
+        <ResponsiveContainer>
+          <LineChart data={data}>
+            <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#a1a1a1" }} />
+            <Tooltip
+              formatter={(value) => `${parseFloat(value).toFixed(2)} BRL`}
+            />
+            <Legend />
+            <Line
+              type="monotone"
+              dataKey="lucro"
+              stroke={greenColor}
+              strokeWidth={3}
+              dot={false}
+              name="Lucro"
+            />
+            <Line
+              type="monotone"
+              dataKey="total_compras"
+              stroke={blueColor}
+              strokeWidth={2}
+              dot={false}
+              name="Compras"
+            />
+            <Line
+              type="monotone"
+              dataKey="total_vendas"
+              stroke={redColor}
+              strokeWidth={2}
+              dot={false}
+              name="Vendas"
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartContainer>
+      <Performers>
+        <div className="tabs">
+          <button className="active">Resumo</button>
+        </div>
+        <div className="list">
+          <Performer>
+            <p>Total Compras</p>
+            <div>
+              <span>{formatCurrency(summary.compras)} BRL</span>
+            </div>
+          </Performer>
+          <Performer>
+            <p>Total Vendas</p>
+            <div>
+              <span>{formatCurrency(summary.vendas)} BRL</span>
+            </div>
+          </Performer>
+          <Performer>
+            <p>Lucro</p>
+            <div>
+              <span className="gain">{formatCurrency(summary.lucro)} BRL</span>
+            </div>
+          </Performer>
+        </div>
+      </Performers>
+    </Container>
+  );
+};
+
+export default MonthProfitChart;
+
+
+
+=== screens\dashboard\components\profit_chart\styles.js ===
+import styled from "styled-components";
+
+export const Container = styled.div`
+  background-color: ${({ theme }) => theme.card};
+  color: white;
+  border-radius: 15px;
+  padding: 15px;
+  width: 100%;
+  max-width: 360px; /* Reduz a largura máxima */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  margin-left: .5em;
+`;
+
+export const Header = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  h2 {
+    font-size: 1.1rem; /* Mantém o texto claro, mas ocupa menos espaço */
+    font-weight: 600;
+  }
+
+  button {
+    background: #2c2c2c;
+    color: white;
+    border: none;
+    padding: 4px 8px; /* Reduz tamanho do botão */
+    font-size: 0.85rem; /* Ajuste pequeno */
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+
+    &:hover {
+      background: #3d3d3d;
+    }
+  }
+`;
+
+export const PortfolioValue = styled.div`
+  margin-top: 15px;
+
+  h1 {
+    font-size: 2rem; /* Reduz tamanho principal do valor */
+    font-weight: 700;
+
+    span {
+      font-size: 0.9rem;
+      margin-left: 4px;
+      opacity: 0.8;
+    }
+  }
+
+  p {
+    font-size: 0.85rem; /* Mantém legibilidade com menos espaço */
+    color: #a1a1a1;
+    margin-top: 5px;
+
+    .gain {
+      color: #22c55e;
+      font-weight: 600;
+    }
+  }
+`;
+
+export const ChartContainer = styled.div`
+  margin-top: 15px;
+  height: 80px; /* Reduz altura do gráfico */
+`;
+
+export const Performers = styled.div`
+  margin-top: 15px;
+
+  .tabs {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid #2c2c2c;
+    padding-bottom: 8px;
+
+    button {
+      background: none;
+      border: none;
+      font-size: 0.85rem;
+      color: #a1a1a1;
+      cursor: pointer;
+
+      &.active {
+        color: white;
+        border-bottom: 2px solid #22c55e;
+        font-weight: 600;
+      }
+    }
+  }
+
+  .list {
+    margin-top: 10px; /* Reduz espaço acima da lista */
+  }
+`;
+
+export const Performer = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px; /* Compacta os itens */
+
+  p {
+    font-size: 0.85rem; /* Pequeno ajuste */
+    font-weight: 500;
+  }
+
+  div {
+    display: flex;
+    align-items: center;
+
+    span {
+      font-size: 0.85rem;
+      margin-right: 8px;
+
+      &.gain {
+        color: #22c55e;
+        font-weight: 600;
+      }
+    }
+  }
+`;
+
+
+
+=== screens\dashboard\components\transactions\component\transaction\index.js ===
+import React from "react";
+import { useLocation } from "react-router-dom";
+import { Container } from "./styles";
+import Header from "../../../../../../components/header";
+import PortfolioCard from "../../../profit_chart";
+
+export default function Transaction() {
+  const query = new URLSearchParams(useLocation().search);
+  const numDoc = query.get("num_doc");
+  const chvNfe = query.get("chv_nfe");
+
+  return (
+   <Container>
+    <Header />
+    <PortfolioCard />
+   </Container>
+  );
+}
+
+
+
+=== screens\dashboard\components\transactions\component\transaction\styles.js ===
+import styled from "styled-components";
+
+
+export const Container = styled.div`
+  width: 100vw;
+  height: 100vh;
+  background-color: ${({ theme }) => theme.card};
+  border-radius: 15px;
+
+  display: flex;
+  flex-direction: column;
+
+  
+
+
+`
+
+
+=== screens\dashboard\components\transactions\index.js ===
+import React, { useState, useEffect } from "react";
+import { Container } from "./styles";
+import { IoCube } from "react-icons/io5";
+import {
+  FaCalendarAlt,
+  FaShoppingCart,
+  FaStore,
+  FaChartLine,
+} from "react-icons/fa";
+
+export default function YearProfitTable() {
+  // Estado para armazenar os dados retornados da API (um array de objetos, um para cada ano)
+  const [summaryData, setSummaryData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Cores definidas com HSL (usadas para formatação dos valores)
+  const greenColor = "hsl(140, 50%, 50%)"; // verde suave
+  const redColor = "hsl(0, 50%, 50%)"; // vermelho suave
+  const blueColor = "hsl(220, 50%, 50%)"; // azul suave
+
+  // Função para formatar valores em moeda BRL
+  function formatCurrency(value) {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
+  }
+
+  /**
+   * Retorna a cor para o valor, conforme o sinal:
+   * - Para "compras" e "vendas": se negativo, vermelho; caso contrário, verde.
+   * - Para "lucro": se negativo, vermelho; se positivo, verde.
+   */
+  function getValueColor(column, value) {
+    if (column === "lucro" || column === "compras" || column === "vendas") {
+      return value < 0 ? redColor : greenColor;
+    }
+    return "inherit";
+  }
+
+  // Ao montar, faz a chamada à rota para extrair os dados reais
+  useEffect(() => {
+    async function fetchSummary() {
+      try {
+        // Chama a nova rota implementada no backend (/home/yearly-report)
+        const response = await fetch(
+          "http://localhost:3003/home/yearly-report"
+        );
+        const data = await response.json();
+        // data é esperado que seja um array de objetos, cada um com:
+        // { year, total_compras, total_vendas, lucro, registros }
+        setSummaryData(data);
+      } catch (error) {
+        console.error("Erro ao buscar dados do C100:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchSummary();
+  }, []);
+
+  // Enquanto os dados não chegam, exibe um indicador de loading
+  if (loading) {
+    return (
+      <Container>
+        <p>Carregando dados...</p>
+      </Container>
+    );
+  }
+
+  // Se não houver dados (erro), exibe uma mensagem de erro
+  if (!summaryData || summaryData.length === 0) {
+    return (
+      <Container>
+        <p>Erro ao carregar dados.</p>
+      </Container>
+    );
+  }
+
+  return (
+    <Container>
+      <div className="header">
+        <p>Lucro por Período</p>
+      </div>
+
+      {/* Cabeçalho da tabela com React Icons */}
+      <div className="table-header">
+        <div className="item ano">
+          <FaCalendarAlt style={{ marginRight: "0.5rem" }} />
+          <p>Ano</p>
+        </div>
+        <div className="item compras">
+          <FaShoppingCart style={{ marginRight: "0.5rem" }} />
+          <p>Compras</p>
+        </div>
+        <div className="item vendas">
+          <FaStore style={{ marginRight: "0.5rem" }} />
+          <p>Vendas</p>
+        </div>
+        <div className="item lucro">
+          <FaChartLine style={{ marginRight: "0.5rem" }} />
+          <p>Lucro</p>
+        </div>
+      </div>
+
+      {/* Exibição dos dados: uma linha para cada ano */}
+      <div className="display">
+        {summaryData.map((data, index) => (
+          <div key={index} className="item">
+            <div className="ano">
+              <div className="thumb">
+                <IoCube size={16} color="white" />
+              </div>
+              <p>{data.year}</p>
+            </div>
+            <div className="compras">
+              <p
+                style={{ color: getValueColor("compras", data.total_compras) }}
+              >
+                {formatCurrency(data.total_compras)}
+              </p>
+            </div>
+            <div className="vendas">
+              <p style={{ color: getValueColor("vendas", data.total_vendas) }}>
+                {formatCurrency(data.total_vendas)}
+              </p>
+            </div>
+            <div className="lucro">
+              <p style={{ color: getValueColor("lucro", data.lucro) }}>
+                {formatCurrency(data.lucro)}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Container>
+  );
+}
+
+
+
+=== screens\dashboard\components\transactions\styles.js ===
+import styled from "styled-components";
+
+export const Container = styled.div`
+  width: 70%;
+  height: 90%;
+  background-color: ${({ theme }) => theme.card};
+  border-radius: 15px;
+  margin: 1em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  .header {
+    width: 90%;
+    height: 3.5em;
+    display: flex;
+    align-items: center;
+    padding: 0 1.5em;
+    border-bottom: 1px solid ${({ theme }) => theme.border};
+
+    p {
+      font-size: 1.2em;
+      font-weight: bold;
+      color: ${({ theme }) => theme.text};
+    }
+  }
+
+  .table-header {
+    width: 95%;
+    height: 2.5em;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid ${({ theme }) => theme.border};
+
+    .item {
+      display: flex;
+      align-items: center;
+      padding: 0 1em;
+
+      p {
+        font-size: 0.9em;
+        font-weight: 500;
+        color: ${({ theme }) => theme.text};
+      }
+    }
+
+    .ano {
+      width: 8em;
+    }
+
+    .compras,
+    .vendas,
+    .entradas,
+    .saidas,
+    .lucro {
+      width: 10em;
+    }
+  }
+
+  .display {
+    width: 95%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+
+    .item {
+      width: 100%;
+      min-height: 3em;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid ${({ theme }) => theme.border};
+      padding: 0.5em 0;
+
+      .ano,
+      .compras,
+      .vendas,
+      .entradas,
+      .saidas,
+      .lucro {
+        display: flex;
+        align-items: center;
+        padding: 0 1em;
+      }
+
+      .ano {
+        width: 8em;
+        .thumb {
+          height: 2em;
+          width: 2em;
+          background-color: ${({ theme }) => theme.primary};
+          border-radius: 50%;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          margin-right: 0.5em;
+        }
+      }
+
+      .compras,
+      .vendas,
+      .entradas,
+      .saidas,
+      .lucro {
+        width: 10em;
+      }
+
+      p {
+        font-size: 0.9em;
+        color: ${({ theme }) => theme.text};
+      }
+    }
+  }
+`;
+
+
+
+=== screens\dashboard\index.js ===
+import React, { useState } from "react";
+import {
+  Container,
+  Menu,
+  BurgerButton,
+  SideMenu,
+  Display,
+  Top,
+  Bottom,
+} from "./styles";
+
+import Header from "../../components/header";
+import TransactionsTable from "./components/transactions";
+import Products from "./components/products";
+import Chart from "./components/profit_chart";
+import LucroEmpresas from "./components/company_profit";
+import Infos from "./components/infos";
+
+export default function Dashboard() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // Abre/fecha o menu lateral
+  const handleMenuToggle = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+
+  return (
+    <Container>
+      <Header />
+      {/* Barra superior com botão de menu e perfil */}
+      <Menu>
+        <BurgerButton isMenuOpen={isMenuOpen} onClick={handleMenuToggle}>
+          <div className="line1" />
+          <div className="line2" />
+          <div className="line3" />
+        </BurgerButton>
+        <div className="perfil">
+          <div className="circle">
+            <p>H</p>
+          </div>
+        </div>
+      </Menu>
+
+      {/* Menu lateral “deslizante” */}
+      <SideMenu isMenuOpen={isMenuOpen}>
+        <div className="logoSection">
+          <h1>Ravena</h1>
+          <p>Financial Assistant</p>
+        </div>
+
+        <div className="menuGroup">
+          <p className="groupTitle">MENU</p>
+          <div className="menuItem active">
+            <span>Dashboard</span>
+          </div>
+          <div className="menuItem">
+            <span>Transactions</span>
+          </div>
+          <div className="menuItem">
+            <span>My Goals</span>
+          </div>
+          <div className="menuItem">
+            <span>Investment</span>
+          </div>
+          <div className="menuItem">
+            <span>Bills and Payment</span>
+          </div>
+          <div className="menuItem">
+            <span>Analytics and Reports</span>
+          </div>
+        </div>
+
+        <div className="menuGroup">
+          <p className="groupTitle">SUPPORT</p>
+          <div className="menuItem">
+            <span>Helps</span>
+          </div>
+          <div className="menuItem">
+            <span>Integration</span>
+          </div>
+          <div className="menuItem">
+            <span>Settings</span>
+          </div>
+        </div>
+      </SideMenu>
+
+      {/* Ao clicar na área principal com o menu aberto, ele fecha */}
+      <Display onClick={() => isMenuOpen && setIsMenuOpen(false)}>
+        <Top>
+          <Chart />
+          <LucroEmpresas />
+          <Products />
+        </Top>
+        <Bottom>
+          <TransactionsTable />
+          <Infos />
+        </Bottom>
+      </Display>
+    </Container>
+  );
+}
+
+
+
+=== screens\dashboard\styles.js ===
+import styled, { css } from "styled-components";
+
+/** Contêiner geral da tela. */
+export const Container = styled.div`
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  background-color: ${({ theme }) => theme.body};
+  color: ${({ theme }) => theme.text};
+`;
+
+/** Barra superior, onde fica o botão de menu (burger) e perfil à direita. */
+export const Menu = styled.div`
+  min-height: 3.5em;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  background-color: rgba(15, 15, 15, 0.5);
+  position: relative;
+
+  .perfil {
+    margin-left: auto;
+    width: 2em;
+    height: 2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.6;
+    margin-right: 1em;
+    cursor: pointer;
+
+    &:hover {
+      opacity: 1;
+    }
+    .circle {
+      height: 1.5em;
+      width: 1.5em;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: rgba(0, 100, 200, 1);
+      border-radius: 50%;
+    }
+
+    p {
+      color: white;
+      font-weight: 600;
+      font-size: 0.8em;
+    }
+  }
+`;
+
+/**
+ * Botão "Burger" que vira "X" quando o menu lateral está aberto.
+ * Ajustamos as transformações para centralizar melhor o 'X'.
+ */
+export const BurgerButton = styled.div`
+  width: 2em;
+  height: 2em;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.4s ease;
+  margin-left: 1em;
+  .line1,
+  .line2,
+  .line3 {
+    width: 1.6em;
+    height: 2px;
+    font-size: .8em;
+    background-color: ${({ theme }) => theme.text};
+    margin: 3px 0;
+    border-radius: 2px;
+    transition: transform 0.4s, opacity 0.4s;
+  }
+
+  ${({ isMenuOpen }) =>
+    isMenuOpen &&
+    css`
+      .line1 {
+        transform: translateY(7px) rotate(45deg);
+      }
+      .line2 {
+        opacity: 0;
+      }
+      .line3 {
+        transform: translateY(-9px) rotate(-45deg);
+      }
+    `}
+`;
+
+/**
+ * Menu lateral fixo que desliza da esquerda.
+ * Ele fica logo abaixo da barra superior (3.5em).
+ */
+export const SideMenu = styled.div`
+  position: fixed;
+  top: 5.2em;
+  left: 0;
+  width: 250px;
+  height: calc(100vh - 3.5em);
+  background-color: #111; /* Cor de fundo do menu lateral */
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  padding: 1em;
+  transition: transform 0.4s ease;
+  transform: ${({ isMenuOpen }) =>
+    isMenuOpen ? "translateX(0)" : "translateX(-100%)"};
+
+  .logoSection {
+    margin-bottom: 2em;
+
+    h1 {
+      color: #ccc;
+      margin: 0;
+      font-size: 1.2em;
+    }
+    p {
+      color: #444;
+      margin: 0;
+      font-size: 0.8em;
+    }
+  }
+
+  .menuGroup {
+    margin-bottom: 1.5em;
+
+    .groupTitle {
+      color: #777;
+      font-size: 0.75em;
+      text-transform: uppercase;
+      margin-bottom: 0.5em;
+    }
+
+    .menuItem {
+      display: flex;
+      align-items: center;
+      padding: 0.6em 0.5em;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s, color 0.3s;
+      color: #aaa;
+
+      &.active {
+        background-color: #37e2ac;
+        color: #111;
+      }
+
+      &:hover {
+        background-color: #222;
+      }
+
+      span {
+        margin-left: 0.5em;
+        font-size: 0.9em;
+        white-space: nowrap;
+      }
+    }
+  }
+`;
+
+/** Área principal abaixo da barra, que ocupa o resto da tela. */
+export const Display = styled.div`
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+`;
+
+/** Parte superior (50% da área principal). */
+export const Top = styled.div`
+  width: 100%;
+  height: 50%;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid ${({ theme }) => theme.border};
+`;
+
+/** Parte inferior (outros 50% da área principal). */
+export const Bottom = styled.div`
+  width: 100%;
+  height: 50%;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid ${({ theme }) => theme.border};
+`;
+
+
+
+=== screens\products\index.js ===
+import React, { useState } from "react";
+import Header from "../../components/header"; // <-- Importa seu Header
+import {
+  Container,
+  SearchBar,
+  MainContent,
+  LeftSection,
+  ProductList,
+  ProductItem,
+  RightSection,
+  StatsCards,
+  StatCard,
+  DoubleTable,
+  TableWrapper,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableCell,
+} from "./styles";
+
+import {
+  AiOutlineSearch,
+  AiOutlineShoppingCart,
+  AiOutlineDollarCircle,
+  AiOutlineMoneyCollect,
+  AiOutlineArrowDown,
+  AiOutlineArrowUp,
+} from "react-icons/ai";
+
+/**
+ * Dados de exemplo de produtos (você substituirá pela sua API real).
+ */
+const fakeProducts = [
+  {
+    id: 1,
+    codigo: "PROD-A",
+    descricao: "Produto A - Descrição breve",
+    unidade: "PC",
+    ncm: "1234.56.78",
+    thumb: <AiOutlineShoppingCart size={20} color="#fff" />,
+    stats: {
+      totalVendas: 50000,
+      totalCompras: 32000,
+      qtdVendas: 120,
+      qtdCompras: 100,
+      precoMedioCompra: 88.5,
+      precoMedioVenda: 120.3,
+      lucro: 18000,
+    },
+    movimentacoesCompra: [
+      { data: "01/01/2025", valor: 5000, qtd: 20 },
+      { data: "05/01/2025", valor: 7500, qtd: 30 },
+      { data: "10/01/2025", valor: 4000, qtd: 15 },
+    ],
+    movimentacoesVenda: [
+      { data: "02/01/2025", valor: 6000, qtd: 20 },
+      { data: "08/01/2025", valor: 10000, qtd: 35 },
+      { data: "15/01/2025", valor: 8000, qtd: 25 },
+    ],
+  },
+  {
+    id: 2,
+    codigo: "PROD-B",
+    descricao: "Produto B - Descrição breve",
+    unidade: "UN",
+    ncm: "9999.88.11",
+    thumb: <AiOutlineMoneyCollect size={20} color="#fff" />,
+    stats: {
+      totalVendas: 24000,
+      totalCompras: 10000,
+      qtdVendas: 80,
+      qtdCompras: 50,
+      precoMedioCompra: 200,
+      precoMedioVenda: 300,
+      lucro: 14000,
+    },
+    movimentacoesCompra: [
+      { data: "02/01/2025", valor: 3000, qtd: 10 },
+      { data: "07/01/2025", valor: 7000, qtd: 40 },
+    ],
+    movimentacoesVenda: [
+      { data: "03/01/2025", valor: 4000, qtd: 15 },
+      { data: "09/01/2025", valor: 10000, qtd: 30 },
+    ],
+  },
+  {
+    id: 3,
+    codigo: "PROD-C",
+    descricao: "Produto C - Descrição breve",
+    unidade: "CX",
+    ncm: "0000.00.00",
+    thumb: <AiOutlineShoppingCart size={20} color="#fff" />,
+    stats: {
+      totalVendas: 15000,
+      totalCompras: 12000,
+      qtdVendas: 50,
+      qtdCompras: 45,
+      precoMedioCompra: 266.7,
+      precoMedioVenda: 300,
+      lucro: 3000,
+    },
+    movimentacoesCompra: [
+      { data: "01/01/2025", valor: 6000, qtd: 20 },
+      { data: "20/01/2025", valor: 6000, qtd: 25 },
+    ],
+    movimentacoesVenda: [
+      { data: "05/01/2025", valor: 9000, qtd: 30 },
+      { data: "25/01/2025", valor: 6000, qtd: 20 },
+    ],
+  },
+];
+
+/**
+ * Formata valores numéricos em R$ e converte para "K" ou "M" se necessário.
+ */
+const formatValor = (valor) => {
+  if (!valor) return "R$ 0,00";
+  if (valor >= 1000000) {
+    return `R$ ${(valor / 1000000).toFixed(2)}M`;
+  } else if (valor >= 1000) {
+    return `R$ ${(valor / 1000).toFixed(2)}K`;
+  }
+  return `R$ ${valor.toFixed(2)}`;
+};
+
+export default function ProductsExplorer() {
+  const [busca, setBusca] = useState("");
+  const [produtoSelecionado, setProdutoSelecionado] = useState(null);
+
+  // Filtra os produtos pela busca
+  const produtosFiltrados = fakeProducts.filter((prod) => {
+    const texto = busca.toLowerCase();
+    return (
+      prod.descricao.toLowerCase().includes(texto) ||
+      prod.codigo.toLowerCase().includes(texto)
+    );
+  });
+
+  const handleSelectProduto = (produto) => {
+    setProdutoSelecionado(produto);
+  };
+
+  return (
+    <>
+      <Header />
+      <Container>
+        {/* Barra de busca */}
+        <SearchBar>
+          <div className="search-wrapper">
+            <AiOutlineSearch size={20} />
+            <input
+              type="text"
+              placeholder="Buscar produto..."
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+            />
+          </div>
+        </SearchBar>
+
+        {/* Layout principal: Lista de produtos (esquerda) + Detalhes (direita) */}
+        <MainContent>
+          {/* Coluna da esquerda: Lista de Produtos */}
+          <LeftSection>
+            <ProductList>
+              {produtosFiltrados.map((produto) => (
+                <ProductItem
+                  key={produto.id}
+                  isSelected={produtoSelecionado?.id === produto.id}
+                  onClick={() => handleSelectProduto(produto)}
+                >
+                  <div className="thumb">{produto.thumb}</div>
+                  <div className="info">
+                    <p className="nome">{produto.descricao}</p>
+                    <p className="codigo">Cód: {produto.codigo}</p>
+                  </div>
+                </ProductItem>
+              ))}
+            </ProductList>
+          </LeftSection>
+
+          {/* Coluna da direita: Stats e Movimentações */}
+          <RightSection>
+            {!produtoSelecionado ? (
+              <div style={{ textAlign: "center", padding: "2em" }}>
+                <p>Selecione um produto para ver os detalhes</p>
+              </div>
+            ) : (
+              <>
+                {/* === BLOCOS DE CARDS COM THUMB === */}
+                <StatsCards>
+                  <StatCard>
+                    <div className="top">
+                      <div
+                        className="thumb"
+                        style={{ backgroundColor: "#f44336" }}
+                      >
+                        <AiOutlineArrowDown size={20} color="#fff" />
+                      </div>
+                      <div className="info">
+                        <p className="nome">Total de Compras</p>
+                        <p className="codigo">
+                          {formatValor(produtoSelecionado.stats.totalCompras)}
+                        </p>
+                      </div>
+                    </div>
+                  </StatCard>
+
+                  <StatCard>
+                    <div className="top">
+                      <div
+                        className="thumb"
+                        style={{ backgroundColor: "#4caf50" }}
+                      >
+                        <AiOutlineArrowUp size={20} color="#fff" />
+                      </div>
+                      <div className="info">
+                        <p className="nome">Total de Vendas</p>
+                        <p className="codigo">
+                          {formatValor(produtoSelecionado.stats.totalVendas)}
+                        </p>
+                      </div>
+                    </div>
+                  </StatCard>
+
+                  <StatCard>
+                    <div className="top">
+                      <div
+                        className="thumb"
+                        style={{ backgroundColor: "#673ab7" }}
+                      >
+                        <AiOutlineShoppingCart size={20} color="#fff" />
+                      </div>
+                      <div className="info">
+                        <p className="nome">Qtd. Compras</p>
+                        <p className="codigo">
+                          {produtoSelecionado.stats.qtdCompras}
+                        </p>
+                      </div>
+                    </div>
+                  </StatCard>
+
+                  <StatCard>
+                    <div className="top">
+                      <div
+                        className="thumb"
+                        style={{ backgroundColor: "#03a9f4" }}
+                      >
+                        <AiOutlineDollarCircle size={20} color="#fff" />
+                      </div>
+                      <div className="info">
+                        <p className="nome">Qtd. Vendas</p>
+                        <p className="codigo">
+                          {produtoSelecionado.stats.qtdVendas}
+                        </p>
+                      </div>
+                    </div>
+                  </StatCard>
+
+                  <StatCard>
+                    <div className="top">
+                      <div
+                        className="thumb"
+                        style={{ backgroundColor: "#ff9800" }}
+                      >
+                        <AiOutlineArrowDown size={20} color="#fff" />
+                      </div>
+                      <div className="info">
+                        <p className="nome">Preço Médio Compra</p>
+                        <p className="codigo">
+                          {formatValor(
+                            produtoSelecionado.stats.precoMedioCompra
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </StatCard>
+
+                  <StatCard>
+                    <div className="top">
+                      <div
+                        className="thumb"
+                        style={{ backgroundColor: "#9c27b0" }}
+                      >
+                        <AiOutlineArrowUp size={20} color="#fff" />
+                      </div>
+                      <div className="info">
+                        <p className="nome">Preço Médio Venda</p>
+                        <p className="codigo">
+                          {formatValor(
+                            produtoSelecionado.stats.precoMedioVenda
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </StatCard>
+
+                  <StatCard>
+                    <div className="top">
+                      <div
+                        className="thumb"
+                        style={{ backgroundColor: "#795548" }}
+                      >
+                        <AiOutlineDollarCircle size={20} color="#fff" />
+                      </div>
+                      <div className="info">
+                        <p className="nome">Lucro Estimado</p>
+                        <p
+                          className="codigo"
+                          style={{
+                            color:
+                              produtoSelecionado.stats.lucro >= 0
+                                ? "#4CAF50"
+                                : "#f44336",
+                            fontWeight: "bold",
+                          }}
+                        >
+                          {formatValor(produtoSelecionado.stats.lucro)}
+                        </p>
+                      </div>
+                    </div>
+                  </StatCard>
+                </StatsCards>
+
+                {/* === TABELA DUPLA (COMPRAS / VENDAS) === */}
+                <DoubleTable>
+                  <TableWrapper>
+                    <TableHeader>Movimentações de Compra</TableHeader>
+                    <TableBody>
+                      <TableRow isHeader>
+                        <TableCell>Data</TableCell>
+                        <TableCell>Valor</TableCell>
+                        <TableCell>Qtd</TableCell>
+                      </TableRow>
+                      {produtoSelecionado.movimentacoesCompra.map(
+                        (mov, idx) => (
+                          <TableRow key={`compra-${idx}`}>
+                            <TableCell>{mov.data}</TableCell>
+                            <TableCell>{formatValor(mov.valor)}</TableCell>
+                            <TableCell>{mov.qtd}</TableCell>
+                          </TableRow>
+                        )
+                      )}
+                    </TableBody>
+                  </TableWrapper>
+
+                  <TableWrapper>
+                    <TableHeader>Movimentações de Venda</TableHeader>
+                    <TableBody>
+                      <TableRow isHeader>
+                        <TableCell>Data</TableCell>
+                        <TableCell>Valor</TableCell>
+                        <TableCell>Qtd</TableCell>
+                      </TableRow>
+                      {produtoSelecionado.movimentacoesVenda.map((mov, idx) => (
+                        <TableRow key={`venda-${idx}`}>
+                          <TableCell>{mov.data}</TableCell>
+                          <TableCell>{formatValor(mov.valor)}</TableCell>
+                          <TableCell>{mov.qtd}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </TableWrapper>
+                </DoubleTable>
+              </>
+            )}
+          </RightSection>
+        </MainContent>
+      </Container>
+    </>
+  );
+}
+
+
+
+=== screens\products\styles.js ===
+import styled from "styled-components";
+
+/**
+ * Contêiner geral do componente,
+ * abrange toda a tela se desejar ocupar 100% da altura/largura.
+ */
+export const Container = styled.div`
+  width: 100%;
+  min-height: 100vh;
+  background-color: ${({ theme }) => theme.body};
+  display: flex;
+  flex-direction: column;
+`;
+
+/**
+ * Barra de busca fixa no topo.
+ */
+export const SearchBar = styled.div`
+  background: ${({ theme }) => theme.header};
+  padding: 1em;
+  display: flex;
+  align-items: center;
+
+  .search-wrapper {
+    background: ${({ theme }) => theme.secondary};
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    padding: 0.2em 0.8em;
+    margin: 0 auto;
+    max-width: 600px;
+    width: 100%;
+
+    svg {
+      color: ${({ theme }) => theme.text};
+    }
+
+    input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: ${({ theme }) => theme.text};
+      margin-left: 0.5em;
+      font-size: 1rem;
+
+      ::placeholder {
+        color: ${({ theme }) => theme.text}cc;
+      }
+    }
+  }
+`;
+
+/**
+ * Área principal que divide o layout em duas seções:
+ * LeftSection (menu / busca) e RightSection (cards / conteúdo detalhado).
+ */
+export const MainContent = styled.div`
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+`;
+
+/**
+ * Coluna à esquerda, pode servir como lista/menu de itens.
+ */
+export const LeftSection = styled.div`
+  width: 30%;
+  max-width: 360px;
+  background: ${({ theme }) => theme.card};
+  border-right: 1px solid ${({ theme }) => theme.border2};
+  overflow-y: auto;
+
+  @media (max-width: 800px) {
+    width: 100%;
+    max-width: 100%;
+    border-right: none;
+    border-bottom: 1px solid ${({ theme }) => theme.border2};
+  }
+`;
+
+/**
+ * Lista de produtos / itens exibidos na coluna da esquerda.
+ */
+export const ProductList = styled.div`
+  display: flex;
+  flex-direction: column;
+  padding: 0.5em;
+  gap: 0.5em;
+`;
+
+/**
+ * Cada item individual da lista de produtos.
+ */
+export const ProductItem = styled.div`
+  background: ${({ isSelected, theme }) =>
+    isSelected ? theme.secondary : theme.contrast};
+  border: 1px solid
+    ${({ isSelected, theme }) => (isSelected ? theme.border2 : "transparent")};
+  border-radius: 6px;
+  padding: 0.8em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  transition: 0.2s background;
+
+  &:hover {
+    background: ${({ theme, isSelected }) =>
+      isSelected ? theme.secondary : theme.contrast2};
+  }
+
+  .thumb {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: ${({ theme }) => theme.primary};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .info {
+    display: flex;
+    flex-direction: column;
+
+    .nome {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: ${({ theme }) => theme.text};
+      margin: 0;
+    }
+
+    .codigo {
+      font-size: 0.85rem;
+      color: ${({ theme }) => theme.text}cc;
+      margin: 0;
+    }
+  }
+`;
+
+/**
+ * Coluna à direita, onde ficam os cards e detalhes do item selecionado.
+ */
+export const RightSection = styled.div`
+  flex: 1;
+  background: ${({ theme }) => theme.body};
+  padding: 1.2em;
+  overflow-y: auto;
+`;
+
+/**
+ * Grid de Cards para exibir estatísticas (ex: total de vendas, compras, etc.).
+ */
+export const StatsCards = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+`;
+
+/**
+ * Cada card de estatística individual dentro do grid de StatsCards.
+ */
+export const StatCard = styled.div`
+  background-color: ${({ theme }) => theme.card2};
+  border-radius: 10px;
+  padding: 0.8em;
+  min-height: 6em;
+  margin: 0.3em 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8em;
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .top {
+    display: flex;
+    align-items: center;
+
+    .thumb {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 10px;
+      svg {
+        font-size: 1.2em;
+      }
+    }
+
+    .info {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      .nome {
+        font-size: 1rem;
+        font-weight: bold;
+        color: ${({ theme }) => theme.text};
+        margin: 0;
+      }
+      .codigo {
+        font-size: 0.85rem;
+        color: ${({ theme }) => theme.text};
+        margin: 0;
+      }
+    }
+  }
+`;
+
+/**
+ * Contêiner que mantém duas tabelas lado a lado (tabela de compras e tabela de vendas).
+ */
+export const DoubleTable = styled.div`
+  display: flex;
+  gap: 1em;
+  flex-wrap: wrap;
+`;
+
+/**
+ * Contêiner estilizado de cada tabela.
+ */
+export const TableWrapper = styled.div`
+  flex: 1;
+  min-width: 260px;
+  background: ${({ theme }) => theme.card};
+  border-radius: 6px;
+  border: 1px solid ${({ theme }) => theme.border2};
+  overflow: hidden;
+  box-shadow: 0 1px 4px ${({ theme }) => theme.border2};
+`;
+
+/**
+ * Cabeçalho da tabela.
+ */
+export const TableHeader = styled.div`
+  background: ${({ theme }) => theme.secondary};
+  padding: 0.6em;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: ${({ theme }) => theme.text};
+`;
+
+/**
+ * Corpo da tabela (substitui <tbody>).
+ */
+export const TableBody = styled.div`
+  display: table;
+  width: 100%;
+  border-spacing: 0;
+`;
+
+/**
+ * Linha da tabela (substitui <tr>).
+ */
+export const TableRow = styled.div`
+  display: table-row;
+  background-color: ${({ isHeader, theme }) =>
+    isHeader ? theme.contrast : "transparent"};
+  border-bottom: 1px solid ${({ theme }) => theme.border2};
+`;
+
+/**
+ * Célula da tabela (substitui <td> e <th>).
+ */
+export const TableCell = styled.div`
+  display: table-cell;
+  padding: 0.6em 0.8em;
+  color: ${({ theme }) => theme.text};
+  font-size: 0.9rem;
+  border-right: 1px solid ${({ theme }) => theme.border2};
+
+  &:last-child {
+    border-right: none;
+  }
+`;
+
+
+
+=== screens\transactions\index.js ===
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import axios from "axios";
+import { Container } from "./styles";
+import Header from "../../components/header";
+import {
+  FaArrowUp,
+  FaArrowDown,
+  FaMoneyBillWave,
+  FaUser,
+  FaFileAlt,
+  FaCalendarAlt,
+  FaDollarSign,
+} from "react-icons/fa";
+
+const { ipcRenderer } = window.require("electron");
+
+export default function Transactions() {
+  // Estados para transações e resumo
+  const [transactions, setTransactions] = useState([]);
+  const [summary, setSummary] = useState({
+    totalEntradas: 0,
+    totalSaidas: 0,
+    totalLucro: 0,
+    startDate: "",
+    endDate: "",
+  });
+
+  // Estados para paginação e scroll
+  const [scrollId, setScrollId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  // Estados para o mês/ano atual
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear() - 1);
+
+  // Refs para o IntersectionObserver
+  const observer = useRef();
+  const lastTransactionRef = useRef(null);
+  const displayRef = useRef(null);
+
+  // Cores definidas para os números dos cards de resumo
+  const cardColorEntradas = "hsl(140, 50%, 50%)"; // verde suave
+  const cardColorSaidas = "hsl(0, 50%, 50%)"; // vermelho suave
+  const cardColorLucro = "hsl(220, 50%, 50%)"; // azul suave
+
+  // ==========================================================================
+  // Função para gerar uma cor a partir do CNPJ
+  // Gera um hash e mapeia para um valor de hue no espaço HSL.
+  function generateColorFromCNPJ(cnpj) {
+    if (!cnpj) return "#888888";
+    let hash = 0;
+    for (let i = 0; i < cnpj.length; i++) {
+      hash = cnpj.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue}, 50%, 50%)`;
+  }
+
+  // Função para formatar moeda
+  function formatCurrency(value) {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value || 0);
+  }
+
+  // Função para formatar a data no cabeçalho (ex: "11/2023")
+  function formatMonthYear() {
+    const pad = (num) => (num < 10 ? `0${num}` : num);
+    return `${pad(currentMonth)}/${currentYear}`;
+  }
+
+  // Função para reiniciar a paginação ao mudar de mês/ano
+  function resetPagination() {
+    setTransactions([]);
+    setScrollId(null);
+    setHasMore(true);
+  }
+
+  // Busca o resumo (entradas, saídas, lucro) para o período atual
+  const fetchSummary = useCallback(async () => {
+    try {
+      const response = await axios.get(
+        "http://localhost:3003/transactions/summary",
+        {
+          params: { month: currentMonth, year: currentYear },
+        }
+      );
+      if (response.data && typeof response.data === "object") {
+        setSummary(response.data);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar resumo:", error.message);
+    }
+  }, [currentMonth, currentYear]);
+
+  // Busca as transações com scroll infinito
+  const fetchTransactions = useCallback(async () => {
+    if (loading || !hasMore) return;
+    setLoading(true);
+    try {
+      const params = scrollId
+        ? { scroll_id: scrollId, month: currentMonth, year: currentYear }
+        : { limit: 10, month: currentMonth, year: currentYear };
+
+      const response = await axios.get("http://localhost:3003/transactions", {
+        params,
+      });
+
+      if (!response.data || typeof response.data !== "object") {
+        throw new Error("Formato de resposta inválido");
+      }
+
+      const newTransactions = Array.isArray(response.data.transactions)
+        ? response.data.transactions
+        : [];
+      setTransactions((prev) => [...prev, ...newTransactions]);
+      setScrollId(response.data.nextScrollId || null);
+      setHasMore(response.data.hasMore ?? false);
+    } catch (error) {
+      console.error("Erro ao carregar transações:", error.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [scrollId, hasMore, loading, currentMonth, currentYear]);
+
+  // Efeito para buscar o resumo e as transações quando o mês ou ano mudam
+  useEffect(() => {
+    resetPagination();
+    fetchSummary();
+    fetchTransactions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentMonth, currentYear]);
+
+  // Observer para o scroll infinito (carrega mais transações quando o último item entra na viewport)
+  useEffect(() => {
+    if (loading) return;
+    observer.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          console.log("🟢 Último item visível, carregando mais transações...");
+          fetchTransactions();
+        }
+      },
+      { root: displayRef.current, threshold: 0.5 }
+    );
+
+    if (lastTransactionRef.current) {
+      observer.current.observe(lastTransactionRef.current);
+    }
+
+    return () => observer.current?.disconnect();
+  }, [fetchTransactions, hasMore, loading]);
+
+  // Funções para mudar de mês
+  function goToNextMonth() {
+    let newMonth = currentMonth + 1;
+    let newYear = currentYear;
+    if (newMonth > 12) {
+      newMonth = 1;
+      newYear++;
+    }
+    setCurrentMonth(newMonth);
+    setCurrentYear(newYear);
+    resetPagination();
+  }
+
+  function goToPrevMonth() {
+    let newMonth = currentMonth - 1;
+    let newYear = currentYear;
+    if (newMonth < 1) {
+      newMonth = 12;
+      newYear--;
+    }
+    setCurrentMonth(newMonth);
+    setCurrentYear(newYear);
+    resetPagination();
+  }
+
+  // Abre uma nova janela (caso use Electron) ao clicar em uma transação
+  const openTransactionWindow = (transaction) => {
+    ipcRenderer.send("open-transaction-window", transaction);
+  };
+
+  return (
+    <>
+      <Header />
+      <Container>
+        {/* Cabeçalho com botões de mês */}
+        <div className="month-bar">
+          <button onClick={goToPrevMonth}>{"<"}</button>
+          <p className="current-month">{formatMonthYear()}</p>
+          <button onClick={goToNextMonth}>{">"}</button>
+        </div>
+
+        {/* Cards de resumo com ícones nas legendas */}
+        <div className="cards">
+          <div className="card entradas">
+            <div
+              className="legend"
+              style={{ display: "flex", alignItems: "center" }}
+            >
+              <FaArrowUp style={{ marginRight: "0.5rem" }} />
+              <p>Entradas</p>
+            </div>
+            <h3 style={{ color: cardColorEntradas }}>
+              {formatCurrency(summary.totalEntradas)}
+            </h3>
+          </div>
+          <div className="card saidas">
+            <div
+              className="legend"
+              style={{ display: "flex", alignItems: "center" }}
+            >
+              <FaArrowDown style={{ marginRight: "0.5rem" }} />
+              <p>Saídas</p>
+            </div>
+            <h3 style={{ color: cardColorSaidas }}>
+              {formatCurrency(summary.totalSaidas)}
+            </h3>
+          </div>
+          <div className="card lucro">
+            <div
+              className="legend"
+              style={{ display: "flex", alignItems: "center" }}
+            >
+              <FaMoneyBillWave style={{ marginRight: "0.5rem" }} />
+              <p>Lucro</p>
+            </div>
+            <h3 style={{ color: cardColorLucro }}>
+              {formatCurrency(summary.totalLucro)}
+            </h3>
+          </div>
+        </div>
+
+        {/* Cabeçalho da tabela com ícones */}
+        <div className="table-header">
+          <div className="item ent">
+            <FaUser style={{ marginRight: "0.5rem" }} />
+            <p>Entidade</p>
+          </div>
+          <div className="item desc">
+            <FaFileAlt style={{ marginRight: "0.5rem" }} />
+            <p>Número Documento</p>
+          </div>
+          <div className="item qtd">
+            <FaCalendarAlt style={{ marginRight: "0.5rem" }} />
+            <p>Data</p>
+          </div>
+          <div className="item vlr">
+            <FaDollarSign style={{ marginRight: "0.5rem" }} />
+            <p>Valor</p>
+          </div>
+        </div>
+
+        {/* Listagem das transações */}
+        <div className="display" ref={displayRef}>
+          {transactions.map((transaction, index) => {
+            const isVenda = transaction.IND_OPER === "1";
+            // Cores suavizadas para os valores individuais (da lista)
+            const valueColor = isVenda
+              ? "hsl(120, 40%, 50%)" // verde suavizado
+              : "hsl(0, 40%, 50%)"; // vermelho suavizado
+
+            const formattedValue = isVenda
+              ? `+ ${formatCurrency(transaction.VL_DOC)}`
+              : `- ${formatCurrency(transaction.VL_DOC)}`;
+
+            const isLastItem = index === transactions.length - 1;
+            return (
+              <div
+                key={`${transaction.NUM_DOC}-${index}`}
+                className="item"
+                ref={isLastItem ? lastTransactionRef : null}
+                onClick={() => openTransactionWindow(transaction)}
+                style={{ cursor: "pointer" }}
+              >
+                <div className="entidade">
+                  {/* Thumb com cor gerada a partir do CNPJ */}
+                  <div
+                    className="thumb"
+                    style={{
+                      backgroundColor: generateColorFromCNPJ(
+                        transaction.CNPJ_FORNECEDOR
+                      ),
+                    }}
+                  >
+                    <p>{transaction.NOME_FORNECEDOR?.charAt(0) || "?"}</p>
+                  </div>
+                  <div className="text">
+                    <p>{transaction.NOME_FORNECEDOR || "Fornecedor"}</p>
+                    <p>{transaction.CNPJ_FORNECEDOR || "CNPJ"}</p>
+                  </div>
+                </div>
+                <div className="desc">
+                  <p>{transaction.NUM_DOC}</p>
+                </div>
+                <div className="qtd">
+                  <p>
+                    {transaction.DT_DOC
+                      ? new Date(transaction.DT_DOC).toLocaleDateString()
+                      : ""}
+                  </p>
+                </div>
+                <div className="vlr">
+                  <p style={{ color: valueColor, fontWeight: "bold" }}>
+                    {formattedValue}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+
+          {loading && <div className="loading">Carregando...</div>}
+        </div>
+      </Container>
+    </>
+  );
+}
+
+
+
+=== screens\transactions\styles.js ===
+import styled from "styled-components";
+
+export const Container = styled.div`
+  width: 100vw;
+  height: 100vh;
+  background-color: ${({ theme }) => theme.body};
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  /* Barra superior para trocar mês/ano */
+  .month-bar {
+    width: 90%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1em;
+
+    button {
+      background: none;
+      border: none;
+      font-size: 1.2em;
+      color: ${({ theme }) => theme.text};
+      margin: 0 1em;
+      cursor: pointer;
+      &:hover {
+        opacity: 0.8;
+      }
+    }
+
+    .current-month {
+      font-size: 1em;
+      font-weight: bold;
+      color: ${({ theme }) => theme.text};
+      min-width: 6em;
+      text-align: center;
+    }
+  }
+
+  /* Cards de Entradas, Saídas e Lucro */
+  .cards {
+    width: 90%;
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1em;
+    margin-bottom: 1em;
+
+    .card {
+      flex: 1;
+      background-color: ${({ theme }) => theme.card};
+      border-radius: 8px;
+      padding: 1em;
+      margin: 0 0.5em;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      svg {
+        fill: ${({ theme }) => theme.text};
+        opacity: 0.5;
+        font-size: 0.6em;
+      }
+      p {
+        font-size: 0.9em;
+        color: ${({ theme }) => theme.text};
+        opacity: 0.7;
+      }
+
+      h3 {
+        margin-top: 0.5em;
+        font-size: 1.2em;
+      }
+    }
+  }
+
+  /* Cabeçalho da tabela */
+  .table-header {
+    width: 95%;
+    height: 2.5em;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid ${({ theme }) => theme.border};
+    background-color: ${({ theme }) => theme.card};
+
+    .item {
+      width: 5em;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      border-right: 1px solid ${({ theme }) => theme.border};
+      padding-left: 1.5em;
+      padding-right: 1em;
+      color: ${({ theme }) => theme.text};
+      svg {
+        fill: ${({ theme }) => theme.text};
+        opacity: 0.5;
+        font-size: 0.6em;
+      }
+      &.ent {
+        width: 15em;
+      }
+      &.desc {
+        width: 10em;
+      }
+      &.vlr {
+        border: none;
+      }
+      p {
+        font-size: 0.8em;
+        opacity: 0.5;
+      }
+    }
+  }
+
+  /* Área da listagem */
+  .display {
+    width: 95%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    margin-bottom: 1em;
+
+    .item {
+      width: 100%;
+      min-height: 4em;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid ${({ theme }) => theme.border};
+      transition: background-color 0.2s ease;
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.03);
+      }
+
+      .entidade {
+        width: 15em;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        padding-left: 1.5em;
+        padding-right: 1em;
+
+        .thumb {
+          height: 2em;
+          min-width: 2em;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          background-color: ${({ theme }) => theme.primary};
+          border-radius: 100%;
+          margin-right: 1em;
+          font-size: 0.8em;
+          opacity: 0.8;
+          p {
+            font-size: 1em;
+            color: white;
+          }
+        }
+        .text {
+          display: flex;
+          flex-direction: column;
+          p {
+            font-size: 0.8em;
+            font-weight: 500;
+            color: ${({ theme }) => theme.text};
+          }
+          p:last-child {
+            font-size: 0.7em;
+            font-weight: 400;
+            opacity: 0.5;
+          }
+        }
+      }
+
+      .desc {
+        width: 10em;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        padding-left: 1.5em;
+        padding-right: 1em;
+        p {
+          font-size: 0.8em;
+          font-weight: 500;
+          color: ${({ theme }) => theme.text};
+        }
+      }
+
+      .qtd {
+        width: 5em;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        padding-left: 1.5em;
+        padding-right: 1em;
+        p {
+          font-size: 0.8em;
+          font-weight: 500;
+          color: ${({ theme }) => theme.text};
+        }
+      }
+
+      .vlr {
+        width: max-content;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        padding-left: 1.5em;
+        padding-right: 1em;
+        p {
+          font-size: 0.8em;
+          font-weight: 500;
+          color: ${({ theme }) => theme.text};
+        }
+      }
+    }
+
+    .loading {
+      text-align: center;
+      padding: 1em;
+      color: ${({ theme }) => theme.text};
+      opacity: 0.6;
+    }
+  }
+`;
+
+
+
+=== screens\upload_speds\index.js ===
+import React, { useState, useRef } from "react";
+import axios from "axios";
+import { Container } from "./styles";
+import { BsFiles } from "react-icons/bs";
+import { CiFileOn } from "react-icons/ci";
+import { GoDatabase } from "react-icons/go";
+import { LiaCogSolid } from "react-icons/lia";
+import { TiPencil } from "react-icons/ti";
+import { IoCubeOutline } from "react-icons/io5";
+
+export default function Revisor() {
+  const [files, setFiles] = useState([]);
+  const [stage, setStage] = useState("standby");
+  const [uploading, setUploading] = useState(false);
+
+  // NOVO: estado para receber o nome do projeto
+  const [project, setProject] = useState("3H6-upQB4qPuQQsIm7D5");
+
+  const fileInputRef = useRef(null);
+
+  // Drag & Drop
+  const handleDrop = (event) => {
+    event.preventDefault();
+    const droppedFiles = Array.from(event.dataTransfer.files);
+    setFiles((prevFiles) => [...prevFiles, ...droppedFiles]);
+  };
+
+  const handleDragOver = (event) => {
+    event.preventDefault();
+  };
+
+  // Seleção de arquivos via clique
+  const handleClick = () => {
+    fileInputRef.current.click();
+  };
+
+  // Seleção de arquivos via input
+  const handleFileSelect = (event) => {
+    const selectedFiles = Array.from(event.target.files);
+    setFiles((prevFiles) => [...prevFiles, ...selectedFiles]);
+  };
+
+  // Upload
+  const handleUpload = async () => {
+    if (files.length === 0) return;
+    // Se quiser, valide se o campo project está vazio:
+    if (!project.trim()) {
+      alert("Informe o nome do projeto antes de enviar os arquivos.");
+      return;
+    }
+
+    setUploading(true);
+
+    const formData = new FormData();
+    files.forEach((file) => formData.append("speds", file));
+
+    try {
+      // CHAVE: Post para /upload/speds/:project
+      await axios.post(
+        `http://localhost:3003/upload/speds/${project.trim()}`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+
+      setStage("processing");
+    } catch (error) {
+      console.error("Erro no upload:", error);
+      alert(
+        "Falha ao enviar os arquivos. Verifique o console para mais detalhes."
+      );
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Texto informativo inicial
+  function Infos() {
+    return (
+      <div className="info">
+        <p>
+          O script de revisão de SPEDs processa os registros de forma
+          estruturada, permitindo identificar inconsistências, validar
+          informações e otimizar a conferência contábil e tributária, garantindo
+          maior precisão e eficiência na auditoria fiscal.
+        </p>
+      </div>
+    );
+  }
+
+  // Caixa de arrastar arquivos
+  function DropBox() {
+    return (
+      <>
+        <input
+          type="file"
+          multiple
+          ref={fileInputRef}
+          style={{ display: "none" }}
+          onChange={handleFileSelect}
+        />
+        <div
+          className="drop-box"
+          onClick={handleClick}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+        >
+          <div className="drop-area">
+            <div className="text">
+              <div className="ico">
+                <p>+</p>
+              </div>
+              <div className="tag">
+                <p>Carregar SPED's EFD ICMS</p>
+                <p>Arraste para cá os arquivos ou clique para selecionar</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Lista de arquivos selecionados
+  function Files() {
+    return (
+      <div className="files">
+        <div className="files-info">
+          <div className="item">
+            <BsFiles />
+            <p>{files.length}</p>
+          </div>
+        </div>
+        <div className="display">
+          {files.map((file, index) => (
+            <div className="file" key={index}>
+              <div className="text">
+                <div className="ico">
+                  <CiFileOn />
+                </div>
+                <div className="head">
+                  <p>{file.name}</p>
+                </div>
+              </div>
+              <div className="infos">
+                <div className="item">
+                  <GoDatabase />
+                  <p>{(file.size / 1024).toFixed(2)} KB</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="send">
+          <div className="btn" onClick={handleUpload}>
+            <LiaCogSolid />
+            <p>{uploading ? "Enviando..." : "Processar arquivos"}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Exemplo de "tarefas" em andamento
+  function Tasks() {
+    const tasks = [
+      {
+        name: "copying",
+        desc: ["Processando arquivos", "Arquivos processados"],
+        stage: 0,
+        done: false,
+      },
+    ];
+
+    return (
+      <div className="tasks">
+        {tasks.map((obj, index) => (
+          <div className="header" key={index}>
+            <div className="ico">
+              <LiaCogSolid />
+            </div>
+            <div className="content">
+              <div className="text">
+                <p>{obj.desc[obj.stage]}</p>
+              </div>
+              <div className="progress">
+                <div className="load"></div>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        <div className="task-info">
+          <div className="thumb">
+            <TiPencil />
+          </div>
+          <div className="text">
+            <p>Cadastrando Empresas</p>
+          </div>
+        </div>
+        <div className="display">
+          <div className="card">
+            <div className="thumb">
+              <IoCubeOutline />
+            </div>
+            <div className="content">
+              <div className="text">
+                <p>Automec Comercial</p>
+                <p>36971776801</p>
+              </div>
+              <div className="infos"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+
+  return (
+    <Container>
+      {stage === "standby" && (
+        <>
+          {files.length === 0 && <Infos />}
+ 
+          <DropBox />
+          {files.length > 0 && <Files />}
+        </>
+      )}
+      {stage === "processing" && (
+        <>
+          <Infos />
+          <Tasks />
+        </>
+      )}
+    </Container>
+  );
+}
+
+
+
+=== screens\upload_speds\styles.js ===
+import styled from "styled-components";
+
+export const Container = styled.div`
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+
+  .info {
+    width: 100%;
+    min-height: 8em;
+    display: flex;
+    border-bottom: 1px solid ${({ theme }) => theme.border};
+    background-color: rgba(255, 255, 255, 0.01);
+    justify-content: center;
+    align-items: center;
+    p {
+      width: 80%;
+      font-size: 0.75em;
+      opacity: 0.7;
+    }
+  }
+
+  .drop-box {
+    width: 100%;
+    height: calc(100% - 10em);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-items: center;
+
+    .drop-area {
+      width: 90%;
+      height: 90%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px dashed ${({ theme }) => theme.border3};
+      border-radius: 10px;
+
+      .text {
+        width: 80%;
+        display: flex;
+        align-items: center;
+        transform: translateX(1em);
+        .ico {
+          min-width: 2em;
+          height: 2em;
+          border: 1px solid rgba(0, 100, 255, 0.6);
+          border-radius: 100%;
+          margin-right: 1em !important;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          p {
+            opacity: 0.6;
+            color: rgba(0, 100, 255, 1);
+          }
+        }
+
+        .tag {
+          p {
+            font-size: 1em;
+            font-weight: 600;
+          }
+
+          p:last-child {
+            margin-top: 1px;
+            font-size: 0.75em;
+            opacity: 0.8;
+            width: 80%;
+            font-weight: 300;
+            line-height: 15px;
+          }
+        }
+      }
+    }
+  }
+
+  .files {
+    width: 100%;
+    min-height: 20em;
+    display: flex;
+    flex-direction: column;
+
+    .files-info {
+      width: calc(100% - 2px);
+      min-height: 2em;
+      display: flex;
+      align-items: center;
+      background-color: rgba(15, 15, 15, 0.5);
+      border: 1px solid ${({ theme }) => theme.border2};
+      .item {
+        padding: 15px;
+        width: max-content;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        border-right: 1px solid ${({ theme }) => theme.border2};
+        font-size: 0.9em;
+        p {
+          font-size: 0.8em;
+          transform: translateY(1px);
+        }
+
+        svg {
+          font-size: 0.8em;
+          margin-right: 5px;
+        }
+      }
+    }
+
+    .display {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      overflow-y: overlay;
+
+      .file {
+        width: 100%;
+        height: max-content;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: rgba(255, 255, 255, 0.03);
+
+        .text {
+          width: 100%;
+          display: flex;
+          height: 3em;
+          .ico {
+            width: 3em;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-right: 1px solid ${({ theme }) => theme.border2};
+          }
+
+          .head {
+            width: 100%;
+            height: 3em;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid ${({ theme }) => theme.border};
+            p {
+              font-size: 0.8em;
+              line-height: 15px;
+              margin-left: 10px;
+              opacity: 0.8;
+            }
+          }
+        }
+
+        .infos {
+          width: 100%;
+          min-height: 1.5em;
+          height: 1.5em;
+          background-color: ${({ theme }) => theme.card};
+
+          .item {
+            width: max-content;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 15px;
+            border-right: 1px solid ${({ theme }) => theme.border};
+
+            svg {
+              font-size: 0.7em;
+              opacity: 0.5;
+              margin-right: 5px;
+            }
+            p {
+              font-size: 0.8em;
+              opacity: 0.5;
+              transform: translateY(1px);
+            }
+          }
+        }
+      }
+    }
+
+    .send {
+      width: 100%;
+      min-height: 5em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: ${({ theme }) => theme.card};
+
+      .btn {
+        width: max-content;
+        padding: 3px 25px;
+        border: 1px solid rgba(0, 100, 200, 0.3);
+        height: 2em;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: ${({ theme }) => theme.card};
+
+        svg {
+          margin-right: 10px;
+          opacity: 0.5;
+        }
+
+        p {
+          transform: translateY(1px);
+          font-size: 0.85em;
+        }
+      }
+    }
+  }
+
+  .tasks {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+
+    .header {
+      width: 100%;
+      min-height: 4em;
+      border-bottom: 1px solid ${({ theme }) => theme.border2};
+      margin-top: 1px;
+      background-color: ${({ theme }) => theme.card};
+      display: flex;
+      .ico {
+        width: 4em;
+        height: 100%;
+        border-right: 1px solid ${({ theme }) => theme.border2};
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2em;
+        opacity: 0.5;
+      }
+
+      .content {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+
+        .text {
+          width: 100%;
+          height: calc(100% - 0.5em);
+          display: flex;
+          align-items: center;
+
+          p {
+            margin-left: 15px;
+            font-size: 0.8em;
+          }
+        }
+
+        .progress {
+          width: 100%;
+          height: 0.1em;
+          display: flex;
+          background-color: rgba(0, 0, 0, 0.3);
+
+          .load {
+            width: 30%;
+            height: 100%;
+            background-color: rgba(0, 100, 50);
+          }
+        }
+      }
+    }
+
+    .task-info {
+      width: 100%;
+      min-height: 2em;
+      background-color: ${({ theme }) => theme.card};
+      display: flex;
+      .thumb {
+        min-width: 3em;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-right: 1px solid ${({ theme }) => theme.border2};
+      }
+
+      .text {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        p {
+          font-size: 0.8em;
+          opacity: 0.9;
+          margin-left: 10px;
+        }
+      }
+    }
+
+    .display {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+
+      .card {
+        width: calc(100% - 10px);
+        height: 5em;
+        display: flex;
+        background-color: ${({ theme }) => theme.card};
+        margin: 3px;
+        border-radius: 5px;
+        .thumb {
+          width: 5em;
+          height: 5em;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0.5;
+        }
+
+        .content {
+          width: calc(100% - 5em);
+          display: flex;
+          flex-direction: column;
+
+          .text {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            p {
+              font-size: 0.9em;
+
+              &:last-child {
+                font-size: 0.8em;
+                opacity: 0.6;
+              }
+            }
+          }
+
+          .infos {
+            width: 100%;
+            min-height: 1.3em;
+            background-color: ${({ theme }) => theme.card};
+          }
+        }
+      }
+    }
+  }
+`;
+
+
+
+=== styles\App.css ===
+@import url('https://fonts.googleapis.com/css2?family=Lobster&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+@import url('https://fonts.googleapis.com/css2?family=Lobster&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap');
+
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  font-family:'Poppins', 'Montserrat',
+  sans-serif;
+    overflow: hidden;
+  
+}
+
+
+
+
+
+
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+
+
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  background: rgba(119, 119, 119, 0.02);
+}
+
+::-webkit-scrollbar-track:hover {
+  background: rgba(133, 133, 133, 0.034);
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: rgba(20, 20, 20, 0.363);
+    border-radius: 10px;
+
+
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(14, 14, 14, 0.76);
+}
+
+
+input {
+  width: 100%;
+  height: 2em;
+  border-radius: 5px;
+  background-color: rgba(0, 0, 0, 0.5);
+  outline: none;
+  border: none;
+  color: white;
+  padding-left: 1em;
+}
+
+
+=== styles\globalStyles.js ===
+// globalStyles.js
+import { createGlobalStyle } from "styled-components";
+
+export const GlobalStyle = createGlobalStyle`
+  body {
+    background: ${({ theme }) => theme.body};
+    color: ${({ theme }) => theme.text};
+    transition: all 0.50s linear;
+  }
+`;
+
+
+
+=== styles\styles.js ===
+import styled from "styled-components";
+
+const colors = require("../utils/colors");
+
+export const AppContainer = styled.div`
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+
+  
+
+  .content-app {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.03);
+    background-color: ${({ theme }) => theme.body};
+
+    color: ${({ theme }) => theme.text};
+  }
+`;
+
+export const BlackScreen = styled.div`
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  position: absolute;
+  background-color: black;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+
+  input {
+    user-select: all !important;
+    width: 50%;
+    height: 2em;
+    background-color: white;
+    z-index: 11;
+    color: black;
+  }
+`;
+
+
+
+=== styles\themes.js ===
+export const lightTheme = {
+  bar: "rgba(250, 250, 250)",
+  primary: "#bb86fc",
+  secondary: "#03dac6",
+  tertiary: "#6200ea",
+  header: "#121212",
+  body: "#ECEFF4",
+  text: "rgba(0, 0, 0, .7)",
+  border: "rgba(0, 0, 0, 0.03)",
+  border2: "rgba(0, 0, 0, 0.1)",
+  card: "rgba(240, 240, 240)",
+  contrast: "rgba(255, 255, 255, 0.02)",
+  contrast2: "rgba(255, 255, 255, 0.8)",
+  header: "rgba(255, 255, 255, 0.8)",
+  load: "#f3f3f3",
+  load2: "#ecebeb",
+};
+
+export const darkTheme = {
+  bar: "rgba(15, 15, 15, .9)",
+  primary: "rgba(0, 100, 200)",
+  secondary: "rgba(255, 255, 255, 0.05)",
+  tertiary: "#6200ea",
+  header: "#121212",
+  body: "rgba(20, 23, 27, .98)",
+  text: "#e0e0e0",
+  border: "rgba(255, 255, 255, .03)",
+  border2: "rgba(255, 255, 255, 0.05)",
+  border3: "rgba(255, 255, 255, 0.1)",
+  card: "rgba(0, 0, 0, .3)",
+  card2: "rgba(27, 25, 25, 0.3)",
+  header: "rgba(255, 255, 255, 0.03)",
+  contrast: "rgba(255, 255, 255, 0.02)",
+  contrast2: "rgba(255, 255, 255, 0.05)",
+  load: "rgba(0, 0, 0, .3)",
+  load2: "rgba(0, 0, 0, .5)",
+};
+
+
+
+=== utils\alerta\antigo.js ===
+import React, { useState, useEffect } from 'react'
+import { Tela, Alert, Btns, Btn } from './styles'
+
+import { BsGearFill } from 'react-icons/bs'
+
+export default function Alerta() {
+
+
+   const { ipcRenderer } = window.require('electron')
+   ipcRenderer.send('app_version')
+
+   ipcRenderer.on('app_version', (event, arg) => {
+     ipcRenderer.removeAllListeners('app_version')
+   })
+
+   ipcRenderer.on('update_available', () => {
+     ipcRenderer.removeAllListeners('update_available')
+     const notification = document.getElementById('update')
+     notification.style.display = 'flex'
+   })
+
+   ipcRenderer.on('update_downloaded', () => {
+     ipcRenderer.removeAllListeners('update_downloaded')
+     const notification = document.getElementById('update')
+
+     notification.style.display = 'flex'
+   })
+
+   function close() {
+     const notification = document.getElementById('update')
+     notification.style.display = 'none'
+   }
+
+   function restartApp() {
+     ipcRenderer.send('restart_app')
+   }
+
+  return (
+    <Tela id="update">
+      <Alert>
+        <h2>
+          <BsGearFill /> Nova atualização disponível
+        </h2>
+        <p>
+          Encontramos uma nova atualização do aplicativo disponível em nosso
+          banco de dados, deseja atualizar agora?
+        </p>
+        <Btns>
+          <Btn onClick={close}>
+            <p>Não</p>
+          </Btn>
+          <Btn onClick={restartApp} className="sim">
+            <p>Sim</p>
+          </Btn>
+        </Btns>
+      </Alert>
+    </Tela>
+  )
+}
+
+
+
+=== utils\alerta\index.js ===
+import React, { useState, useEffect } from 'react'
+import { Tela, Alert, Btns, Btn } from './styles'
+
+import {AiOutlineCheckCircle} from 'react-icons/ai'
+import { FiAlertTriangle } from 'react-icons/fi'
+
+export default function Alerta() {
+  return (
+    <Tela id="alert">
+      <Alert>
+        <h2 id="alert-err">
+          <FiAlertTriangle /> Aviso{' '}
+        </h2>
+        <h2 id="alert-sucess">
+          <AiOutlineCheckCircle /> Sucesso{' '}
+        </h2>
+        <p id="alert-text"></p>
+        <Btns id="bool">
+          <Btn id="alert-nao">
+            <p>Não</p>
+          </Btn>
+          <Btn id="alert-sim" className="sim">
+            <p>Sim</p>
+          </Btn>
+        </Btns>
+        <Btns id="not-bool">
+          <Btn id="alert-ok" className="sim">
+            <p>Ok</p>
+          </Btn>
+        </Btns>
+      </Alert>
+    </Tela>
+  )
+}
+
+
+
+=== utils\alerta\styles.js ===
+import styled from 'styled-components'
+
+export const Tela = styled.div`
+  width: 100%;
+  height: 100vh;
+  display: none;
+  flex-direction: column;
+  background-color: rgba(0, 0, 0, 0.5);
+  position: absolute;
+  justify-content: center;
+  align-items: center;
+  z-index: 3;
+
+  &.ativ {
+    display:flex;
+    opacity: 1;
+  }
+
+ 
+`
+
+export const Alert = styled.div`
+  width: 30em;
+  color: black;
+  height: max-content;
+  display: flex;
+  flex-direction: column;
+  background-color: rgba(255, 255, 255, 0.95);
+  border-radius: 10px;
+  box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.4);
+
+  p, h2 {
+    margin: 0 20px !important;
+    margin-top: 10px !important;
+  
+  }
+  h2 {
+    font-size: 1.2em;
+    height: max-content;
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    margin-top: 20px !important;
+    svg {
+      font-size: .9em;
+      margin-right: 15px;
+    }
+  }
+`
+
+
+export const Btns = styled.div`
+  width: 97%;
+  height: 6em;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+`
+
+export const Btn = styled.div`
+  width: max-content;
+  height: max-content;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 30px;
+  box-shadow: 0px 0px 2px rgba(0, 0, 0, 0.3);
+  margin: 0 .3em !important;
+  cursor: pointer;
+  user-select: none;
+  background-color: rgb(255, 255, 255);
+  opacity: .8;
+
+  &:hover {
+    opacity: 1;
+  }
+
+  &.sim {
+    color:white;
+    background-color:rgba(15, 15, 15, 0.8);
+  } 
+
+  p {
+    font-size: .9em;
+    margin: 0 !important;
+    padding: 1px 50px;
+  }
+`
+
+
+
+
+=== utils\alerta.js ===
+export default function alerta(msg, bool, status, func) {
+  document.getElementById('alert').style.display = 'flex'
+  document.getElementById('alert-text').innerHTML = msg
+
+  if (status === 'success') {
+    document.getElementById('alert-success').style.display = 'flex'
+    document.getElementById('alert-err').style.display = 'none'
+  } else {
+    document.getElementById('alert-success').style.display = 'none'
+    document.getElementById('alert-err').style.display = 'success'
+  }
+
+  if (bool == 'bool') {
+    document.getElementById('bool').style.display = 'flex'
+    document.getElementById('not-bool').style.display = 'none'
+
+    var sim = document.getElementById('alert-sim')
+    var nao = document.getElementById('alert-nao')
+
+    sim.addEventListener(
+      'click',
+      () => {
+        if (func) func()
+        sim.removeEventListener('click', func)
+        document.getElementById('dash').classList.remove('blur')
+        document.getElementById('alert').style.display = 'none'
+      },
+      { once: true }
+    )
+
+    nao.addEventListener('click', () => {
+      sim.removeEventListener('click', func)
+      document.getElementById('dash').classList.remove('blur')
+      document.getElementById('alert').style.display = 'none'
+    })
+  } else {
+    document.getElementById('bool').style.display = 'none'
+    document.getElementById('not-bool').style.display = 'flex'
+
+    var ok = document.getElementById('alert-ok')
+
+    ok.addEventListener('click', () => {
+      document.getElementById('dash').classList.remove('blur')
+      document.getElementById('alert').style.display = 'none'
+      if(func) func()
+    }, {once: true})
+  }
+}
+
+
+
+=== utils\colors.js ===
+var colors = {
+  head: 'rgb(10, 10, 23)',
+  bg: 'rgba(10, 10, 14, .05)',
+  btn: 'rgba(0, 0, 0, 0.5)',
+  menu: 'rgb(15, 15, 15, 0.9)',
+  card: 'rgb(45, 43, 49)',
+  cardSecond: 'rgb(25, 23, 29)'
+}
+
+
+module.exports = colors
+
+
+=== utils\loading\index.js ===
+import React from 'react'
+import Lottie from 'react-lottie'
+import * as loading from './loading.json'
+import {Load} from './styles.js'
+
+const defaultOptions = {
+  loop: true,
+  autoplay: true,
+  speed: 3,
+  animationData: loading.default,
+  renderSettings: {
+    preserveAspectRatio: 'xMidYMid slice'
+  }
+}
+
+const Loading = () => {
+  return (
+    <Load>
+      <Lottie options={defaultOptions} height={'4em'} width={'3em'} />
+    </Load>
+  )
+}
+
+export default Loading
+
+
+
+=== utils\loading\loading.json ===
+{"v":"5.1.15","fr":60,"ip":0,"op":141,"w":300,"h":300,"nm":"Composição 1","ddd":0,"assets":[],"layers":[{"ddd":0,"ind":1,"ty":4,"nm":"Camada de forma 1","sr":1,"ks":{"o":{"a":0,"k":100,"ix":11},"r":{"a":1,"k":[{"i":{"x":[0.833],"y":[0.833]},"o":{"x":[0.167],"y":[0.167]},"n":["0p833_0p833_0p167_0p167"],"t":0,"s":[0],"e":[1080]},{"t":180}],"ix":10},"p":{"a":0,"k":[150,150,0],"ix":2},"a":{"a":0,"k":[-14.604,-15.104,0],"ix":1},"s":{"a":0,"k":[100,100,100],"ix":6}},"ao":0,"shapes":[{"ty":"gr","it":[{"d":1,"ty":"el","s":{"a":0,"k":[106.793,106.793],"ix":2},"p":{"a":0,"k":[0,0],"ix":3},"nm":"Caminho da elipse 1","mn":"ADBE Vector Shape - Ellipse","hd":false},{"ty":"st","c":{"a":0,"k":[0.016,0.416,0.816,1],"ix":3},"o":{"a":0,"k":100,"ix":4},"w":{"a":0,"k":11,"ix":5},"lc":2,"lj":1,"ml":4,"nm":"Traçado 1","mn":"ADBE Vector Graphic - Stroke","hd":false},{"ty":"tr","p":{"a":0,"k":[-14.604,-15.104],"ix":2},"a":{"a":0,"k":[0,0],"ix":1},"s":{"a":0,"k":[100,100],"ix":3},"r":{"a":0,"k":0,"ix":6},"o":{"a":0,"k":100,"ix":7},"sk":{"a":0,"k":0,"ix":4},"sa":{"a":0,"k":0,"ix":5},"nm":"Transformar"}],"nm":"Elipse 1","np":3,"cix":2,"ix":1,"mn":"ADBE Vector Group","hd":false},{"ty":"tm","s":{"a":1,"k":[{"i":{"x":[0.833],"y":[0.833]},"o":{"x":[0.167],"y":[0.167]},"n":["0p833_0p833_0p167_0p167"],"t":0,"s":[0],"e":[0]},{"i":{"x":[0.833],"y":[0.833]},"o":{"x":[0.167],"y":[0.167]},"n":["0p833_0p833_0p167_0p167"],"t":60,"s":[0],"e":[67]},{"t":119}],"ix":1},"e":{"a":1,"k":[{"i":{"x":[0.833],"y":[0.833]},"o":{"x":[0.167],"y":[0.167]},"n":["0p833_0p833_0p167_0p167"],"t":0,"s":[3],"e":[70]},{"i":{"x":[0.833],"y":[0.833]},"o":{"x":[0.167],"y":[0.167]},"n":["0p833_0p833_0p167_0p167"],"t":60,"s":[70],"e":[70]},{"t":119}],"ix":2},"o":{"a":0,"k":0,"ix":3},"m":1,"ix":2,"nm":"Aparar caminhos 1","mn":"ADBE Vector Filter - Trim","hd":false}],"ip":0,"op":900,"st":0,"bm":0},{"ddd":0,"ind":2,"ty":4,"nm":"Camada de forma 2","sr":1,"ks":{"o":{"a":0,"k":100,"ix":11},"r":{"a":1,"k":[{"i":{"x":[0.833],"y":[0.833]},"o":{"x":[0.167],"y":[0.167]},"n":["0p833_0p833_0p167_0p167"],"t":0,"s":[0],"e":[1080]},{"t":180}],"ix":10},"p":{"a":0,"k":[150,150,0],"ix":2},"a":{"a":0,"k":[-14.604,-15.104,0],"ix":1},"s":{"a":0,"k":[100,100,100],"ix":6}},"ao":0,"shapes":[{"ty":"gr","it":[{"d":1,"ty":"el","s":{"a":0,"k":[106.793,106.793],"ix":2},"p":{"a":0,"k":[0,0],"ix":3},"nm":"Caminho da elipse 1","mn":"ADBE Vector Shape - Ellipse","hd":false},{"ty":"st","c":{"a":0,"k":[0.016,0.416,0.816,1],"ix":3},"o":{"a":0,"k":100,"ix":4},"w":{"a":0,"k":10,"ix":5},"lc":2,"lj":1,"ml":4,"nm":"Traçado 1","mn":"ADBE Vector Graphic - Stroke","hd":false},{"ty":"tr","p":{"a":0,"k":[-14.604,-15.104],"ix":2},"a":{"a":0,"k":[0,0],"ix":1},"s":{"a":0,"k":[100,100],"ix":3},"r":{"a":0,"k":0,"ix":6},"o":{"a":0,"k":100,"ix":7},"sk":{"a":0,"k":0,"ix":4},"sa":{"a":0,"k":0,"ix":5},"nm":"Transformar"}],"nm":"Elipse 1","np":3,"cix":2,"ix":1,"mn":"ADBE Vector Group","hd":false},{"ty":"tm","s":{"a":1,"k":[{"i":{"x":[0.833],"y":[0.833]},"o":{"x":[0.167],"y":[0.167]},"n":["0p833_0p833_0p167_0p167"],"t":20,"s":[0],"e":[0]},{"i":{"x":[0.833],"y":[0.833]},"o":{"x":[0.167],"y":[0.167]},"n":["0p833_0p833_0p167_0p167"],"t":69.916,"s":[0],"e":[67]},{"t":119}],"ix":1},"e":{"a":1,"k":[{"i":{"x":[0.833],"y":[0.833]},"o":{"x":[0.167],"y":[0.167]},"n":["0p833_0p833_0p167_0p167"],"t":20,"s":[3],"e":[70]},{"i":{"x":[0.833],"y":[0.833]},"o":{"x":[0.167],"y":[0.167]},"n":["0p833_0p833_0p167_0p167"],"t":69.916,"s":[70],"e":[70]},{"t":119}],"ix":2},"o":{"a":0,"k":0,"ix":3},"m":1,"ix":2,"nm":"Aparar caminhos 1","mn":"ADBE Vector Filter - Trim","hd":false}],"ip":0,"op":900,"st":0,"bm":0},{"ddd":0,"ind":3,"ty":4,"nm":"Camada de forma 3","sr":1,"ks":{"o":{"a":0,"k":100,"ix":11},"r":{"a":1,"k":[{"i":{"x":[0.833],"y":[0.833]},"o":{"x":[0.167],"y":[0.167]},"n":["0p833_0p833_0p167_0p167"],"t":0,"s":[0],"e":[1080]},{"t":180}],"ix":10},"p":{"a":0,"k":[150,150,0],"ix":2},"a":{"a":0,"k":[-14.604,-15.104,0],"ix":1},"s":{"a":0,"k":[100,100,100],"ix":6}},"ao":0,"shapes":[{"ty":"gr","it":[{"d":1,"ty":"el","s":{"a":0,"k":[106.793,106.793],"ix":2},"p":{"a":0,"k":[0,0],"ix":3},"nm":"Caminho da elipse 1","mn":"ADBE Vector Shape - Ellipse","hd":false},{"ty":"st","c":{"a":0,"k":[0.016,0.416,0.816,1],"ix":3},"o":{"a":0,"k":100,"ix":4},"w":{"a":0,"k":10,"ix":5},"lc":2,"lj":1,"ml":4,"nm":"Traçado 1","mn":"ADBE Vector Graphic - Stroke","hd":false},{"ty":"tr","p":{"a":0,"k":[-14.604,-15.104],"ix":2},"a":{"a":0,"k":[0,0],"ix":1},"s":{"a":0,"k":[100,100],"ix":3},"r":{"a":0,"k":0,"ix":6},"o":{"a":0,"k":100,"ix":7},"sk":{"a":0,"k":0,"ix":4},"sa":{"a":0,"k":0,"ix":5},"nm":"Transformar"}],"nm":"Elipse 1","np":3,"cix":2,"ix":1,"mn":"ADBE Vector Group","hd":false},{"ty":"tm","s":{"a":1,"k":[{"i":{"x":[0.833],"y":[0.833]},"o":{"x":[0.167],"y":[0.167]},"n":["0p833_0p833_0p167_0p167"],"t":41,"s":[0],"e":[0]},{"i":{"x":[0.833],"y":[0.833]},"o":{"x":[0.167],"y":[0.167]},"n":["0p833_0p833_0p167_0p167"],"t":80.328,"s":[0],"e":[67]},{"t":119}],"ix":1},"e":{"a":1,"k":[{"i":{"x":[0.833],"y":[0.833]},"o":{"x":[0.167],"y":[0.167]},"n":["0p833_0p833_0p167_0p167"],"t":41,"s":[3],"e":[70]},{"i":{"x":[0.833],"y":[0.833]},"o":{"x":[0.167],"y":[0.167]},"n":["0p833_0p833_0p167_0p167"],"t":80.328,"s":[70],"e":[70]},{"t":119}],"ix":2},"o":{"a":0,"k":0,"ix":3},"m":1,"ix":2,"nm":"Aparar caminhos 1","mn":"ADBE Vector Filter - Trim","hd":false}],"ip":0,"op":900,"st":0,"bm":0},{"ddd":0,"ind":4,"ty":4,"nm":"Camada de forma 4","sr":1,"ks":{"o":{"a":0,"k":100,"ix":11},"r":{"a":1,"k":[{"i":{"x":[0.833],"y":[0.833]},"o":{"x":[0.167],"y":[0.167]},"n":["0p833_0p833_0p167_0p167"],"t":0,"s":[0],"e":[1080]},{"t":180}],"ix":10},"p":{"a":0,"k":[150,150,0],"ix":2},"a":{"a":0,"k":[-14.604,-15.104,0],"ix":1},"s":{"a":0,"k":[100,100,100],"ix":6}},"ao":0,"shapes":[{"ty":"gr","it":[{"d":1,"ty":"el","s":{"a":0,"k":[106.793,106.793],"ix":2},"p":{"a":0,"k":[0,0],"ix":3},"nm":"Caminho da elipse 1","mn":"ADBE Vector Shape - Ellipse","hd":false},{"ty":"st","c":{"a":0,"k":[0.016,0.416,0.816,1],"ix":3},"o":{"a":0,"k":100,"ix":4},"w":{"a":0,"k":10,"ix":5},"lc":2,"lj":1,"ml":4,"nm":"Traçado 1","mn":"ADBE Vector Graphic - Stroke","hd":false},{"ty":"tr","p":{"a":0,"k":[-14.604,-15.104],"ix":2},"a":{"a":0,"k":[0,0],"ix":1},"s":{"a":0,"k":[100,100],"ix":3},"r":{"a":0,"k":0,"ix":6},"o":{"a":0,"k":100,"ix":7},"sk":{"a":0,"k":0,"ix":4},"sa":{"a":0,"k":0,"ix":5},"nm":"Transformar"}],"nm":"Elipse 1","np":3,"cix":2,"ix":1,"mn":"ADBE Vector Group","hd":false},{"ty":"tm","s":{"a":1,"k":[{"i":{"x":[0.833],"y":[0.833]},"o":{"x":[0.167],"y":[0.167]},"n":["0p833_0p833_0p167_0p167"],"t":54,"s":[0],"e":[0]},{"i":{"x":[0.833],"y":[0.833]},"o":{"x":[0.167],"y":[0.167]},"n":["0p833_0p833_0p167_0p167"],"t":86.773,"s":[0],"e":[67]},{"t":119}],"ix":1},"e":{"a":1,"k":[{"i":{"x":[0.833],"y":[0.833]},"o":{"x":[0.167],"y":[0.167]},"n":["0p833_0p833_0p167_0p167"],"t":54,"s":[3],"e":[70]},{"i":{"x":[0.833],"y":[0.833]},"o":{"x":[0.167],"y":[0.167]},"n":["0p833_0p833_0p167_0p167"],"t":86.773,"s":[70],"e":[70]},{"t":119}],"ix":2},"o":{"a":0,"k":0,"ix":3},"m":1,"ix":2,"nm":"Aparar caminhos 1","mn":"ADBE Vector Filter - Trim","hd":false}],"ip":0,"op":900,"st":0,"bm":0}],"markers":[]}
+
+
+=== utils\loading\styles.js ===
+import styled, { css } from 'styled-components'
+
+export const Load = styled.div`
+    width: 100%;
+    height: 80%;    
+    opacity: .4;
+    display:  flex;
+    align-items: center;
+    justify-content: center;
+`
+
+
+=== utils\reduzirStr.js ===
+export default function reduzirStr(str, n) {
+  return str.length > n ? str.substr(0, n - 1) + '...' : str
+}
+
+
+
+
+
+=== utils\timer.js ===
+module.exports = timer = (ms) => new Promise((res) => setTimeout(res, ms));
+
