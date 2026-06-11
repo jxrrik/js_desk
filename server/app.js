@@ -1,20 +1,21 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const bodyParser = require("body-parser");
+const morgan = require("morgan");
 
 class AppController {
   constructor() {
     this.express = express();
-    this.express.use(cors());
-    this.express.use(bodyParser.json({ limit: "30gb" }));
-    this.express.use(bodyParser.urlencoded({ extended: true, limit: "30gb" }));
+    this.express.set("json spaces", 2);
     this.middlewares();
     this.routes();
   }
 
   middlewares() {
-    this.express.use(express.json());
+    this.express.use(morgan("dev"));
+    this.express.use(cors());
+    this.express.use(express.json({ limit: "30gb" }));
+    this.express.use(express.urlencoded({ extended: true, limit: "30gb" }));
   }
 
   routes() {
